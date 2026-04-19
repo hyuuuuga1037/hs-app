@@ -1,4 +1,4 @@
-const CACHE = 'hs-app-v1';
+const CACHE = 'hs-app-v2';
 const ASSETS = [
   './出品アシスタント.html',
   './manifest.json',

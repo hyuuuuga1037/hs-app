@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>出品アシスタント</title>
+  <meta name="theme-color" content="#E8503A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="出品アシスタント">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    :root{
+      --red:#E8503A;--red-light:#FDECEA;--bg:#F4F4F6;
+      --card:#fff;--text:#1a1a1a;--sub:#888;--border:#E0E0E0;
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','YuGothicUI',sans-serif;
+      background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;padding-bottom:80px}
+
+    /* ── HEADER ── */
+    .hdr{background:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;
+      box-shadow:0 1px 4px rgba(0,0,0,.1);position:sticky;top:0;z-index:200}
+    .hdr-icon{font-size:26px}
+    .hdr-title{font-size:17px;font-weight:800;color:var(--red);line-height:1.2}
+    .hdr-sub{font-size:11px;color:var(--sub)}
+
+    /* ── TABS ── */
+    .tabs{display:flex;background:#fff;border-bottom:1px solid var(--border)}
+    .tab{flex:1;padding:13px;text-align:center;font-size:13px;cursor:pointer;
+      color:var(--sub);border-bottom:2.5px solid transparent;transition:.2s;font-weight:500}
+    .tab.on{color:var(--red);border-color:var(--red);font-weight:700}
+    .panel{display:none}.panel.on{display:block}
+
+    /* ── NOTICE ── */
+    .notice{background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;
+      padding:10px 12px;font-size:12px;color:#6D4C41;line-height:1.6;margin:12px 16px 0}
+
+    /* ── CONTENT WRAP ── */
+    .wrap{padding:12px 16px;max-width:640px;margin:0 auto}
+
+    /* ── CARD ── */
+    .card{background:var(--card);border-radius:14px;padding:16px;
+      margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+    .sec-ttl{font-size:12px;font-weight:700;color:var(--sub);
+      letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px}
+
+    /* ── CATEGORY GRID ── */
+    .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .cat-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:10px 6px;border:1.5px solid var(--border);border-radius:12px;
+      background:#fff;cursor:pointer;gap:4px;min-height:72px;transition:.15s;user-select:none}
+    .cat-btn:active{transform:scale(.96)}
+    .cat-btn.on{background:var(--red-light);border-color:var(--red)}
+    .cat-btn .ci{font-size:28px;line-height:1}
+    .cat-btn .cl{font-size:12px;font-weight:600;color:var(--text)}
+    .cat-btn.on .cl{color:var(--red)}
+
+    /* ── FIELD ── */
+    .fg{margin-bottom:14px}
+    .fl{font-size:13px;font-weight:700;margin-bottom:6px;
+      display:flex;align-items:center;gap:6px}
+    .opt{font-size:10px;background:#EFEFEF;color:#888;
+      padding:1px 6px;border-radius:4px;font-weight:400}
+    .fc{font-size:11px;color:var(--sub);margin-left:auto}
+    input[type=text],input[type=number],textarea,select{
+      width:100%;padding:10px 12px;border:1.5px solid var(--border);
+      border-radius:9px;font-size:14px;background:#FAFAFA;color:var(--text);
+      outline:none;transition:border-color .15s;-webkit-appearance:none;
+      font-family:inherit}
+    input[type=text]:focus,input[type=number]:focus,textarea:focus,select:focus{
+      border-color:var(--red);background:#fff}
+    textarea{resize:vertical;min-height:80px;line-height:1.6}
+    select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+
+    /* ── MEASURE ROW ── */
+    .mr{display:flex;align-items:center;margin-bottom:10px;gap:8px}
+    .ml{width:88px;flex-shrink:0;font-size:13px;font-weight:500;line-height:1.3}
+    .ml small{display:block;font-size:10px;color:var(--sub)}
+    .mw{flex:1;display:flex;align-items:center;gap:5px}
+    .mw input{flex:1;text-align:right;padding-right:8px}
+    .mu{font-size:13px;color:var(--sub);width:22px;flex-shrink:0}
+
+    /* ── RADIO GROUP ── */
+    .rg{display:flex;gap:7px;flex-wrap:wrap}
+    .rb{flex:1;min-width:70px;padding:9px 10px;border:1.5px solid var(--border);
+      border-radius:9px;text-align:center;cursor:pointer;font-size:13px;
+      transition:.15s;background:#fff;font-weight:500;user-select:none}
+    .rb:active{transform:scale(.97)}
+    .rb.on{border-color:var(--red);background:var(--red-light);color:var(--red);font-weight:700}
+
+    /* ── SUIT SUB-SECTION ── */
+    .suit-sec{border:1.5px solid #F0D0CC;border-radius:12px;
+      padding:14px;margin-bottom:12px;background:#FFFBFA}
+    .suit-sec-ttl{font-size:13px;font-weight:800;color:var(--red);
+      margin-bottom:12px;padding-bottom:9px;border-bottom:1px solid #F0D0CC;display:flex;align-items:center;gap:6px}
+
+    /* ── CONDITION ── */
+    .cond-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .cond{padding:9px 10px;border:1.5px solid var(--border);border-radius:9px;
+      cursor:pointer;transition:.15s;user-select:none}
+    .cond.on{border-color:var(--red);background:var(--red-light)}
+    .cond-name{font-size:13px;font-weight:700}
+    .cond.on .cond-name{color:var(--red)}
+    .cond-desc{font-size:10px;color:var(--sub);margin-top:2px}
+
+    /* ── SHIPPING ── */
+    .ship{border:1.5px solid var(--border);border-radius:10px;
+      padding:12px;margin-bottom:8px;cursor:pointer;transition:.15s;user-select:none}
+    .ship.on{border-color:var(--red);background:var(--red-light)}
+    .ship-name{font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px}
+    .ship-tags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+    .ship-tag{font-size:10px;background:#EFEFEF;padding:2px 7px;border-radius:4px;color:#666}
+    .ship.on .ship-tag{background:#F9C9C2;color:#B03020}
+
+    /* ── PRICE ── */
+    .price-wrap{position:relative}
+    .price-pre{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+      font-size:15px;color:var(--sub);pointer-events:none}
+    .price-wrap input{padding-left:26px}
+
+    /* ── BUTTONS ── */
+    .btn{width:100%;padding:14px;border:none;border-radius:12px;
+      font-size:15px;font-weight:800;cursor:pointer;transition:.15s;font-family:inherit}
+    .btn:active{opacity:.8}
+    .btn-red{background:var(--red);color:#fff}
+    .btn-outline{background:#fff;color:var(--red);border:2px solid var(--red);margin-top:8px}
+    .btn-sm{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:inherit}
+    .btn-sm-red{background:var(--red);color:#fff}
+    .btn-sm-outline{background:#fff;color:var(--red);border:1.5px solid var(--red)}
+    .btn-sm-gray{background:#EFEFEF;color:#555}
+
+    /* ── MODAL ── */
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:flex-end}
+    .overlay.on{display:flex}
+    .modal{background:#fff;width:100%;max-height:88vh;border-radius:18px 18px 0 0;
+      padding:20px 16px 30px;overflow-y:auto}
+    .modal-ttl{font-size:16px;font-weight:800;margin-bottom:16px;
+      display:flex;justify-content:space-between;align-items:center}
+    .modal-close{font-size:24px;cursor:pointer;color:var(--sub);line-height:1;background:none;border:none}
+    .preview{background:#F8F8F8;border:1.5px solid var(--border);border-radius:10px;
+      padding:14px;font-size:13px;line-height:1.8;white-space:pre-wrap;word-break:break-all;
+      max-height:320px;overflow-y:auto;font-family:'Hiragino Sans',monospace}
+    .copy-ok{display:none;text-align:center;color:#2E7D32;font-size:13px;font-weight:700;margin-top:8px}
+
+    /* ── TOAST ── */
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);
+      background:#2c2c2c;color:#fff;padding:11px 22px;border-radius:10px;
+      font-size:13px;z-index:999;transition:.3s;white-space:nowrap;pointer-events:none}
+    .toast.on{transform:translateX(-50%) translateY(0)}
+
+    /* ── SAVED LIST ── */
+    .saved-item{background:#fff;border-radius:12px;padding:14px;
+      margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .si-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+    .si-name{font-weight:800;font-size:15px;flex:1}
+    .si-cat{font-size:11px;background:#EFEFEF;padding:2px 8px;border-radius:6px;color:#555;white-space:nowrap}
+    .si-meta{font-size:11px;color:var(--sub);margin-top:4px}
+    .si-acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+    .empty{text-align:center;padding:40px 20px;color:var(--sub);font-size:14px}
+    .empty-icon{font-size:40px;margin-bottom:10px}
+
+    /* ── BOTTOM BAR ── */
+    .btm-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;
+      padding:10px 16px 16px;box-shadow:0 -2px 12px rgba(0,0,0,.1);z-index:100;
+      max-width:640px;margin:0 auto}
+
+    /* HIDE/SHOW helpers */
+    .hidden{display:none!important}
+
+    /* ── CUSTOM FIELDS ── */
+    .custom-row{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+    .custom-row input:first-child{width:100px;flex-shrink:0}
+    .custom-row input:last-child{flex:1}
+    .custom-del{background:#EFEFEF;border:none;border-radius:7px;
+      padding:6px 10px;cursor:pointer;font-size:15px;color:#888;flex-shrink:0}
+
+    /* scrollbar thin */
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-thumb{background:#ccc;border-radius:4px}
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-icon">📦</div>
+  <div>
+    <div class="hdr-title">出品アシスタント</div>
+    <div class="hdr-sub">メルカリ出品 依頼文ジェネレーター</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab on" data-tab="input" onclick="switchTab('input')">✏️ 商品を入力</div>
+  <div class="tab" data-tab="saved" onclick="switchTab('saved')">💾 保存済み</div>
+</div>
+
+<!-- ==================== INPUT PANEL ==================== -->
+<div class="panel on" id="panel-input">
+
+  <div class="notice">
+    ⚠️ <strong>メルカリ自動下書きについて：</strong>メルカリに公式APIは公開されていないため、アプリへの自動入力はできません。「説明文を生成」してコピーし、メルカリアプリの商品説明欄に貼り付けてください。
+  </div>
+
+  <div class="wrap">
+
+    <!-- カテゴリ -->
+    <div class="card">
+      <div class="sec-ttl">カテゴリ</div>
+      <div class="cat-grid" id="cat-grid">
+        <!-- JS rendered -->
+      </div>
+    </div>
+
+    <!-- 基本情報 -->
+    <div class="card">
+      <div class="sec-ttl">基本情報</div>
+
+      <div class="fg">
+        <div class="fl">管理番号 <span class="opt">任意</span></div>
+        <input type="text" id="f-mgmt" placeholder="例：2024-001">
+      </div>
+
+      <div class="fg">
+        <div class="fl">商品名 <span class="fc" id="name-cnt">0/40</span></div>
+        <input type="text" id="f-name" placeholder="例：スーツ セットアップ" maxlength="40"
+          oninput="document.getElementById('name-cnt').textContent=this.value.length+'/40'">
+      </div>
+
+      <div class="fg">
+        <div class="fl">ブランド名 <span class="opt">任意</span></div>
+        <input type="text" id="f-brand" placeholder="例：SUITS SELECT、青山、AOKI">
+      </div>
+
+      <div class="fg">
+        <div class="fl">表記サイズ <span class="opt">任意</span></div>
+        <input type="text" id="f-size" placeholder="例：M、L、XL、38、170/88A">
+      </div>
+
+      <div class="fg">
+        <div class="fl">商品の状態</div>
+        <div class="cond-grid" id="cond-grid"></div>
+      </div>
+    </div>
+
+    <!-- 採寸データ -->
+    <div class="card" id="measure-card">
+      <div class="sec-ttl">採寸データ</div>
+      <div id="measure-area">
+        <div style="color:var(--sub);text-align:center;padding:20px;font-size:13px">
+          ↑ カテゴリを選択すると採寸項目が表示されます
+        </div>
+      </div>
+    </div>
+
+    <!-- セールスポイント -->
+    <div class="card">
+      <div class="sec-ttl">セールスポイント・状態の詳細</div>
+      <div class="fg">
+        <div class="fl">アピールポイント・状態の詳細 <span class="opt">任意</span></div>
+        <textarea id="f-appeal" rows="4" placeholder="例：正規品。クリーニング済み。目立った傷・汚れなし。ポケット裏に小さなほつれがありますが着用に支障なし。"></textarea>
+      </div>
+      <div class="fg">
+        <div class="fl">ハッシュタグ <span class="opt">任意</span></div>
+        <input type="text" id="f-tags" placeholder="例：#スーツ #セットアップ #青山">
+      </div>
+    </div>
+
+    <!-- 配送方法 -->
+    <div class="card">
+      <div class="sec-ttl">配送方法 <span class="opt">任意</span></div>
+      <div id="ship-list"></div>
+    </div>
+
+    <!-- 販売価格 -->
+    <div class="card">
+      <div class="sec-ttl">販売価格 <span class="opt">任意</span></div>
+      <div class="price-wrap">
+        <span class="price-pre">¥</span>
+        <input type="number" id="f-price" placeholder="3000" min="300" max="9999999">
+      </div>
+    </div>
+
+  </div><!-- /wrap -->
+
+  <!-- BOTTOM BAR -->
+  <div class="btm-bar">
+    <button class="btn btn-red" onclick="generateText()">📋 説明文を生成・コピー</button>
+    <button class="btn btn-outline" onclick="saveDraft()">💾 下書きを保存</button>
+  </div>
+
+</div><!-- /panel-input -->
+
+<!-- ==================== SAVED PANEL ==================== -->
+<div class="panel" id="panel-saved">
+  <div class="wrap">
+    <div id="saved-list"></div>
+  </div>
+</div>
+
+<!-- ==================== MODAL ==================== -->
+<div class="overlay" id="gen-overlay" onclick="closeModal(event)">
+  <div class="modal" id="gen-modal">
+    <div class="modal-ttl">
+      生成された説明文
+      <button class="modal-close" onclick="document.getElementById('gen-overlay').classList.remove('on')">✕</button>
+    </div>
+    <div class="preview" id="gen-preview"></div>
+    <div class="copy-ok" id="copy-ok">✅ コピーしました！</div>
+    <button class="btn btn-red" style="margin-top:14px" onclick="copyGenText()">📋 クリップボードにコピー</button>
+    <button class="btn btn-outline" onclick="document.getElementById('gen-overlay').classList.remove('on')">閉じる</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────
+   DATA
+───────────────────────────────────────────── */
+const CATS = [
+  {id:'suit',  label:'スーツ',    icon:'🤵'},
+  {id:'shoes', label:'シューズ',  icon:'👠'},
+  {id:'jersey', label:'ジャージ', icon:'🏃'},
+  {id:'bag',   label:'バッグ',    icon:'👜'},
+  {id:'tops',  label:'トップス',  icon:'👕'},
+  {id:'one',   label:'ワンピース',icon:'👗'},
+  {id:'pants', label:'パンツ',    icon:'👖'},
+  {id:'skirt', label:'スカート',  icon:'🩱'},
+  {id:'outer', label:'アウター',  icon:'🧥'},
+];
+
+const CONDITIONS = [
+  {id:'new',       name:'新品・未使用',      desc:'タグ付・未開封'},
+  {id:'likenew',   name:'未使用に近い',      desc:'使用感ほぼなし'},
+  {id:'good',      name:'目立った傷・汚れなし',desc:'使用感あるが綺麗'},
+  {id:'fair',      name:'やや傷・汚れあり',  desc:'使用感・汚れあり'},
+  {id:'poor',      name:'傷や汚れあり',      desc:'ダメージ有'},
+  {id:'bad',       name:'全体的に状態が悪い', desc:'大きなダメージ'},
+];
+
+const SHIPPING = [
+  {id:'rakuraku', name:'らくらくメルカリ便', icon:'🐱', tags:['匿名','追跡','補償']},
+  {id:'nekopos',  name:'ネコポス',           icon:'🐱', tags:['匿名','追跡','〜3cm']},
+  {id:'yuyu',     name:'ゆうゆうメルカリ便', icon:'🏣', tags:['匿名','追跡','補償']},
+  {id:'compact',  name:'宅急便コンパクト',   icon:'📦', tags:['追跡','補償']},
+  {id:'other',    name:'その他・未定',        icon:'📬', tags:[]},
+];
+
+// Measurement schemas per category
+const MEASURES = {
+  bag:  [
+    {k:'縦',    u:'cm', req:true},
+    {k:'横',    u:'cm', req:true},
+    {k:'奥行き',u:'cm', req:true},
+    {k:'持ち手の長さ',u:'cm',req:false},
+    {k:'ショルダー紐',u:'cm',req:false},
+  ],
+  tops: [
+    {k:'肩幅',u:'cm',req:true},
+    {k:'身幅',u:'cm',req:true},
+    {k:'袖丈',u:'cm',req:true},
+    {k:'着丈',u:'cm',req:true},
+  ],
+  one:  [
+    {k:'肩幅',u:'cm',req:true},
+    {k:'身幅',u:'cm',req:true},
+    {k:'袖丈',u:'cm',req:false},
+    {k:'着丈',u:'cm',req:true},
+    {k:'スカート丈',u:'cm',req:false},
+  ],
+  pants:[
+    {k:'ウエスト',u:'cm',req:true},
+    {k:'ヒップ',  u:'cm',req:false},
+    {k:'股上',    u:'cm',req:true},
+    {k:'股下',    u:'cm',req:true},
+    {k:'わたり幅',u:'cm',req:false},
+    {k:'裾幅',    u:'cm',req:false},
+  ],
+  skirt:[
+    {k:'ウエスト',u:'cm',req:true},
+    {k:'ヒップ',  u:'cm',req:false},
+    {k:'丈',      u:'cm',req:true},
+    {k:'裾幅',    u:'cm',req:false},
+  ],
+  outer:[
+    {k:'肩幅',u:'cm',req:true},
+    {k:'身幅',u:'cm',req:true},
+    {k:'袖丈',u:'cm',req:true},
+    {k:'着丈',u:'cm',req:true},
+  ],
+  shoes:[
+    {k:'サイズ',      u:'cm',req:true},
+    {k:'インソール長', u:'cm',req:false},
+    {k:'足幅',        u:'cm',req:false},
+    {k:'ヒールの高さ', u:'cm',req:false},
+  ],
+  suit: 'special',
+  jersey:'special_jersey',
+};
+
+/* ─────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────── */
+let selCat     = '';
+let selCond    = '';
+let selShip    = '';
+let suitType   = 'setup';   // 'setup' | 'jacket' | 'pants_only'
+let hemType    = 'single';  // 'single' | 'double'
+let suitDesign = { lining:'', buttons:'', vent:'', options:[] };
+let jerseyType   = 'setup';      // 'setup' | 'jacket_only'
+let suitThreePiece = false;
+let customFields = [{k:'',v:''},{k:'',v:''},{k:'',v:''}];
+let genText    = '';
+
+/* ─────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────── */
+function init(){
+  // Categories
+  const grid = document.getElementById('cat-grid');
+  CATS.forEach(c=>{
+    const b = document.createElement('div');
+    b.className='cat-btn';b.dataset.id=c.id;
+    b.innerHTML=`<span class="ci">${c.icon}</span><span class="cl">${c.label}</span>`;
+    b.onclick=()=>selectCat(c.id);
+    grid.appendChild(b);
+  });
+
+  // Conditions
+  const cg = document.getElementById('cond-grid');
+  CONDITIONS.forEach(c=>{
+    const d = document.createElement('div');
+    d.className='cond';d.dataset.id=c.id;
+    d.innerHTML=`<div class="cond-name">${c.name}</div><div class="cond-desc">${c.desc}</div>`;
+    d.onclick=()=>{
+      document.querySelectorAll('.cond').forEach(x=>x.classList.remove('on'));
+      d.classList.add('on');selCond=c.id;
+    };
+    cg.appendChild(d);
+  });
+
+  // Shipping
+  const sl = document.getElementById('ship-list');
+  SHIPPING.forEach(s=>{
+    const d = document.createElement('div');
+    d.className='ship';d.dataset.id=s.id;
+    d.innerHTML=`<div class="ship-name">${s.icon} ${s.name}</div>
+      <div class="ship-tags">${s.tags.map(t=>`<span class="ship-tag">${t}</span>`).join('')}</div>`;
+    d.onclick=()=>{
+      document.querySelectorAll('.ship').forEach(x=>x.classList.remove('on'));
+      d.classList.add('on');selShip=s.id;
+    };
+    sl.appendChild(d);
+  });
+
+  renderSaved();
+}
+
+/* ─────────────────────────────────────────────
+   CATEGORY SELECT
+───────────────────────────────────────────── */
+function selectCat(id){
+  selCat=id;
+  document.querySelectorAll('.cat-btn').forEach(b=>{
+    b.classList.toggle('on', b.dataset.id===id);
+  });
+  renderMeasures();
+  // スーツ選択時：状態欄が空なら定型文を自動セット
+  if(id==='suit'){
+    const appealEl = document.getElementById('f-appeal');
+    if(appealEl && !appealEl.value.trim()){
+      appealEl.value = '全体的に使用感が少なく状態良好です！\nまだまだご使用いただけます。';
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────
+   RENDER MEASURES
+───────────────────────────────────────────── */
+function renderMeasures(){
+  const area = document.getElementById('measure-area');
+  const schema = MEASURES[selCat];
+
+  if(!schema){area.innerHTML='<div style="color:var(--sub);text-align:center;padding:20px;font-size:13px">↑ カテゴリを選択してください</div>';return;}
+
+  if(schema==='special')         { renderSuitMeasures(area); return; }
+  if(schema==='special_jersey')  { renderJerseyMeasures(area); return; }
+  if(schema==='custom')          { renderCustomMeasures(area); return; }
+
+  let html = schema.map(m=>`
+    <div class="mr">
+      <div class="ml">${m.k}<small>${m.req?'':'任意'}</small></div>
+      <div class="mw">
+        <input type="number" id="m-${m.k}" placeholder="0.0" step="0.5" min="0">
+        <span class="mu">${m.u}</span>
+      </div>
+    </div>`).join('');
+  area.innerHTML = html;
+}
+
+function renderSuitMeasures(area){
+  area.innerHTML = `
+    <div class="fg">
+      <div class="fl">種別</div>
+      <div class="rg" id="suit-type-rg">
+        <div class="rb on" data-v="setup" onclick="setSuitType('setup')">セットアップ</div>
+        <div class="rb" data-v="jacket" onclick="setSuitType('jacket')">ジャケット単品</div>
+        <div class="rb" data-v="pants_only" onclick="setSuitType('pants_only')">パンツ単品</div>
+      </div>
+    </div>
+    <div id="suit-jacket-sec">
+      <div class="suit-sec">
+        <div class="suit-sec-ttl">🧥 ジャケット採寸</div>
+        <div class="mr"><div class="ml">肩幅</div><div class="mw"><input type="number" id="sj-kata" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">身幅</div><div class="mw"><input type="number" id="sj-mimi" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">袖丈</div><div class="mw"><input type="number" id="sj-sode" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">着丈</div><div class="mw"><input type="number" id="sj-take" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+      </div>
+    </div>
+    <div id="suit-pants-sec">
+      <div class="suit-sec">
+        <div class="suit-sec-ttl">👖 パンツ採寸</div>
+        <div class="mr"><div class="ml">ウエスト</div><div class="mw"><input type="number" id="sp-waist" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">総丈</div><div class="mw"><input type="number" id="sp-sozo" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">わたり幅</div><div class="mw"><input type="number" id="sp-watari" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">股下</div><div class="mw"><input type="number" id="sp-inseam" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">裾幅</div><div class="mw"><input type="number" id="sp-hem" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">裾余り</div><div class="mw"><input type="number" id="sp-hemextra" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="fg" style="margin-top:10px">
+          <div class="fl">裾仕様</div>
+          <div class="rg" id="hem-type-rg">
+            <div class="rb on" data-v="single" onclick="setHemType('single')">シングル</div>
+            <div class="rb" data-v="double" onclick="setHemType('double')">ダブル</div>
+          </div>
+        </div>
+        <div class="mr" id="hem-fold-row" style="display:none;margin-top:4px">
+          <div class="ml">折り返し幅</div>
+          <div class="mw"><input type="number" id="sp-fold" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:4px">
+      <div class="fl">スリーピース</div>
+      <div class="rg">
+        <div class="rb" id="three-piece-btn" onclick="setSuitThreePiece()">3ピース（ベスト付き）</div>
+      </div>
+    </div>
+    <div id="suit-vest-sec" style="display:none">
+      <div class="suit-sec">
+        <div class="suit-sec-ttl">🦺 ベスト採寸</div>
+        <div class="mr"><div class="ml">肩幅</div><div class="mw"><input type="number" id="sv-kata" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">身幅</div><div class="mw"><input type="number" id="sv-mimi" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">着丈</div><div class="mw"><input type="number" id="sv-take" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+      </div>
+    </div>
+    <div class="suit-sec">
+      <div class="suit-sec-ttl">🎨 デザイン・仕様</div>
+      <div class="fg">
+        <div class="fl">裏地</div>
+        <div class="rg">
+          <div class="rb" data-g="lining" data-v="背抜き" onclick="setSuitDesignRadio('lining','背抜き')">背抜き</div>
+          <div class="rb" data-g="lining" data-v="総裏" onclick="setSuitDesignRadio('lining','総裏')">総裏</div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fl">ボタン</div>
+        <div class="rg">
+          <div class="rb" data-g="buttons" data-v="2つボタン" onclick="setSuitDesignRadio('buttons','2つボタン')">2つボタン</div>
+          <div class="rb" data-g="buttons" data-v="3つボタン" onclick="setSuitDesignRadio('buttons','3つボタン')">3つボタン</div>
+          <div class="rb" data-g="buttons" data-v="段返り3つボタン" onclick="setSuitDesignRadio('buttons','段返り3つボタン')">段返り3つボタン</div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fl">ベント</div>
+        <div class="rg">
+          <div class="rb" data-g="vent" data-v="センターベント" onclick="setSuitDesignRadio('vent','センターベント')">センターベント</div>
+          <div class="rb" data-g="vent" data-v="サイドベンツ" onclick="setSuitDesignRadio('vent','サイドベンツ')">サイドベンツ</div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fl">オプション <span class="opt">複数選択可</span></div>
+        <div class="rg" id="suit-options-rg" style="flex-wrap:wrap">
+          <div class="rb" data-v="ダブルブレスト" onclick="toggleSuitOption(this)">ダブルブレスト</div>
+          <div class="rb" data-v="本切羽" onclick="toggleSuitOption(this)">本切羽</div>
+          <div class="rb" data-v="ストレッチ" onclick="toggleSuitOption(this)">ストレッチ</div>
+          <div class="rb" data-v="ウォッシャブル" onclick="toggleSuitOption(this)">ウォッシャブル</div>
+          <div class="rb" data-v="ウール100%" onclick="toggleSuitOption(this)">ウール100%</div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fl">その他・色柄 <span class="opt">任意</span></div>
+        <input type="text" id="suit-design-memo" placeholder="例：グレー系、ストライプ、チェック">
+      </div>
+    </div>`;
+  setSuitType(suitType);
+  suitThreePiece=false;
+  // ※ loadDraftで再セットされる
+}
+
+function setSuitType(v){
+  suitType=v;
+  const btns = document.querySelectorAll('#suit-type-rg .rb');
+  btns.forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  const jSec = document.getElementById('suit-jacket-sec');
+  const pSec = document.getElementById('suit-pants-sec');
+  if(jSec) jSec.style.display = (v==='pants_only') ? 'none':'block';
+  if(pSec) pSec.style.display = (v==='jacket')     ? 'none':'block';
+}
+
+function setHemType(v){
+  hemType=v;
+  const btns = document.querySelectorAll('#hem-type-rg .rb');
+  btns.forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  const row = document.getElementById('hem-fold-row');
+  if(row) row.style.display = (v==='double') ? 'flex':'none';
+}
+
+function setSuitThreePiece(){
+  suitThreePiece = !suitThreePiece;
+  const btn = document.getElementById('three-piece-btn');
+  if(btn) btn.classList.toggle('on', suitThreePiece);
+  const sec = document.getElementById('suit-vest-sec');
+  if(sec) sec.style.display = suitThreePiece ? 'block' : 'none';
+}
+
+function renderJerseyMeasures(area){
+  area.innerHTML = `
+    <div class="fg">
+      <div class="fl">種別</div>
+      <div class="rg" id="jersey-type-rg">
+        <div class="rb on" data-v="setup" onclick="setJerseyType('setup')">セットアップ</div>
+        <div class="rb" data-v="jacket_only" onclick="setJerseyType('jacket_only')">トラックジャケットのみ</div>
+      </div>
+    </div>
+    <div id="jersey-jacket-sec">
+      <div class="suit-sec">
+        <div class="suit-sec-ttl">🏃 ジャケット採寸</div>
+        <div class="mr"><div class="ml">肩幅</div><div class="mw"><input type="number" id="jj-kata" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">身幅</div><div class="mw"><input type="number" id="jj-mimi" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">袖丈</div><div class="mw"><input type="number" id="jj-sode" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">着丈</div><div class="mw"><input type="number" id="jj-take" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr">
+          <div class="ml">襟<small>任意</small></div>
+          <div class="mw"><input type="text" id="jj-collar" placeholder="例：スタンドカラー" style="text-align:left"></div>
+        </div>
+      </div>
+    </div>
+    <div id="jersey-pants-sec">
+      <div class="suit-sec">
+        <div class="suit-sec-ttl">👖 パンツ採寸</div>
+        <div class="mr"><div class="ml">ウエスト</div><div class="mw"><input type="number" id="jp-waist" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">総丈</div><div class="mw"><input type="number" id="jp-sozo" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+        <div class="mr"><div class="ml">股下</div><div class="mw"><input type="number" id="jp-inseam" placeholder="0.0" step="0.5" min="0"><span class="mu">cm</span></div></div>
+      </div>
+    </div>`;
+  setJerseyType(jerseyType);
+}
+
+function setJerseyType(val){
+  jerseyType=val;
+  document.querySelectorAll('#jersey-type-rg .rb').forEach(b=>b.classList.toggle('on',b.dataset.v===val));
+  const pSec=document.getElementById('jersey-pants-sec');
+  if(pSec) pSec.style.display=(val==='jacket_only')?'none':'block';
+}
+
+function setSuitDesignRadio(group, val){
+  suitDesign[group] = suitDesign[group]===val ? '' : val;
+  document.querySelectorAll(`[data-g="${group}"]`).forEach(b=>{
+    b.classList.toggle('on', b.dataset.v===suitDesign[group]);
+  });
+}
+
+function toggleSuitOption(el){
+  const val = el.dataset.v;
+  const idx = suitDesign.options.indexOf(val);
+  if(idx>=0) suitDesign.options.splice(idx,1);
+  else suitDesign.options.push(val);
+  el.classList.toggle('on', suitDesign.options.includes(val));
+}
+
+function buildSuitDesignLines(){
+  const parts=[];
+  if(suitDesign.lining)  parts.push(suitDesign.lining);
+  if(suitDesign.buttons) parts.push(suitDesign.buttons);
+  if(suitDesign.vent)    parts.push(suitDesign.vent);
+  suitDesign.options.forEach(o=>parts.push(o));
+  const memo=v('suit-design-memo');
+  if(memo) parts.push(memo);
+  return parts;
+}
+
+function renderCustomMeasures(area){
+  area.innerHTML=`<div id="custom-rows"></div>
+    <button class="btn btn-outline" style="margin-top:8px;font-size:13px;padding:10px" onclick="addCustomRow()">＋ 項目を追加</button>`;
+  customFields.forEach((_,i)=>appendCustomRow(i));
+}
+
+function appendCustomRow(i){
+  const wrap = document.getElementById('custom-rows');
+  const row = document.createElement('div');
+  row.className='custom-row';row.dataset.i=i;
+  row.innerHTML=`
+    <input type="text" placeholder="項目名" value="${customFields[i]?.k||''}" oninput="customFields[${i}].k=this.value">
+    <input type="text" placeholder="内容・数値" value="${customFields[i]?.v||''}" oninput="customFields[${i}].v=this.value">
+    <button class="custom-del" onclick="removeCustomRow(${i})">✕</button>`;
+  wrap.appendChild(row);
+}
+
+function addCustomRow(){
+  customFields.push({k:'',v:''});
+  appendCustomRow(customFields.length-1);
+}
+
+function removeCustomRow(i){
+  customFields.splice(i,1);
+  renderCustomMeasures(document.getElementById('measure-area'));
+  customFields.forEach((_,j)=>{/* already rebuilt */});
+}
+
+/* ─────────────────────────────────────────────
+   GENERATE TEXT
+───────────────────────────────────────────── */
+function v(id){ const el=document.getElementById(id); return el? el.value.trim():''; }
+function m(id){ const el=document.getElementById(id); return el? parseFloat(el.value)||0 :0; }
+function cm(id){ const val=m(id); return val>0?val+'cm':'－'; }
+
+function generateText(){
+  const name    = v('f-name');
+  const brand   = v('f-brand');
+  const size    = v('f-size');
+  const mgmt    = v('f-mgmt');
+  const appeal  = v('f-appeal');
+  const tags    = v('f-tags');
+  const price   = v('f-price');
+
+  const condObj  = CONDITIONS.find(c=>c.id===selCond);
+  const shipObj  = SHIPPING.find(s=>s.id===selShip);
+  const catObj   = CATS.find(c=>c.id===selCat);
+
+  let lines = [];
+
+  if(name)  lines.push(`【商品名】${name}`);
+  if(brand) lines.push(`【ブランド】${brand}`);
+  if(size)  lines.push(`【サイズ表記】${size}`);
+  if(condObj) lines.push(`【商品の状態】${condObj.name}`);
+  lines.push('');
+
+  // Measures
+  const schema = MEASURES[selCat];
+  if(schema && schema!=='special' && schema!=='custom' && selCat){
+    lines.push('■ 採寸データ（平置き実寸）');
+    schema.forEach(ms=>{
+      const val = m('m-'+ms.k);
+      if(val>0) lines.push(`${ms.k}：${val}cm`);
+    });
+    lines.push('');
+  } else if(selCat==='suit'){
+    const st = suitType;
+    const designParts = buildSuitDesignLines();
+    const stLabel = st==='setup'?(suitThreePiece?'3ピース セットアップ':'セットアップ'):st==='jacket'?'ジャケット単品':'パンツ単品';
+    // ── スーツ専用テンプレート ──
+    lines = []; // スーツは専用フォーマットで全体を再構成
+    lines.push('コメントなしの即購入、歓迎です！');
+    lines.push('');
+    lines.push('・24時間以内発送');
+    lines.push('・匿名配送');
+    lines.push('');
+    lines.push('');
+    lines.push('■その他同サイズスーツ');
+    lines.push('#ひなたスーツS');
+    lines.push('');
+    lines.push('');
+    lines.push('■ブランド');
+    if(brand) lines.push(brand);
+    lines.push('');
+    lines.push('ビジネススーツ');
+    lines.push(stLabel);
+    if(st==='setup') lines.push(suitThreePiece?'ジャケット　ベスト　スラックス':'ジャケット　スラックス');
+    lines.push('');
+    if(designParts.length){
+      lines.push('■デザイン');
+      designParts.forEach(p=>lines.push(p));
+      lines.push('');
+    }
+    lines.push('');
+    lines.push(`■サイズ${size?' ('+size+')':''}`);
+    if(st!=='pants_only'){
+      lines.push('・ジャケット');
+      lines.push(`着丈：${cm('sj-take')}`);
+      lines.push(`肩幅：${cm('sj-kata')}`);
+      lines.push(`身幅：${cm('sj-mimi')}`);
+      lines.push(`袖丈：${cm('sj-sode')}`);
+    }
+    if(suitThreePiece && st!=='pants_only'){
+      lines.push('');
+      lines.push('・ベスト');
+      lines.push(`肩幅：${cm('sv-kata')}`);
+      lines.push(`身幅：${cm('sv-mimi')}`);
+      lines.push(`着丈：${cm('sv-take')}`);
+    }
+    if(st!=='jacket'){
+      if(st!=='pants_only') lines.push('');
+      lines.push('・パンツ');
+      lines.push(`ウエスト：${cm('sp-waist')}`);
+      lines.push(`総丈：${cm('sp-sozo')}`);
+      if(m('sp-inseam')>0)   lines.push(`股下：${cm('sp-inseam')}`);
+      lines.push(`わたり幅：${cm('sp-watari')}`);
+      lines.push(`裾幅：${cm('sp-hem')}`);
+      if(m('sp-hemextra')>0) lines.push(`裾余り：${cm('sp-hemextra')}`);
+      lines.push('');
+      lines.push(hemType==='double'
+        ? `裾ダブル仕上げ${m('sp-fold')>0?' （折り返し'+cm('sp-fold')+'）':''}`
+        : '裾シングル仕上げ');
+    }
+    lines.push('');
+    lines.push('※平置き実寸。素人採寸です。');
+    lines.push('誤差はご了承ください。');
+    lines.push('');
+    lines.push('■状態');
+    lines.push(appeal||'');
+    lines.push('');
+    lines.push('■補足');
+    lines.push('あくまでも中古品です。');
+    lines.push('新品をお求めの方、神経質な方はご遠慮下さい。');
+    lines.push('ご理解頂ける方ご購入お待ちしております。');
+    lines.push('');
+    lines.push('');
+    lines.push('■発送');
+    lines.push('※送料の関係でコンパクトに畳んで発送いたします。');
+    lines.push('畳みジワが発生しますことをご了承くださいませ。');
+    lines.push('');
+    lines.push('結婚式 、二次会、ウエディングフォト、成人式、卒業式、入学式、セレモニー、パーティー、式典、舞台衣装、ステージ衣装、ライブ、スーツ、プライベートとオールシーズン様々なシーンで活躍します。');
+    if(mgmt) lines.push(`\n【管理番号】${mgmt}`);
+  } else if(selCat==='jersey'){
+    const jt = jerseyType;
+    const jtLabel = jt==='setup' ? 'セットアップ' : 'トラックジャケット';
+    lines.push(`■ 採寸データ（平置き実寸）【ジャージ ${jtLabel}】`);
+    lines.push('・ジャケット');
+    lines.push(`肩幅：${cm('jj-kata')}`);
+    lines.push(`身幅：${cm('jj-mimi')}`);
+    lines.push(`袖丈：${cm('jj-sode')}`);
+    lines.push(`着丈：${cm('jj-take')}`);
+    const collar = document.getElementById('jj-collar');
+    if(collar && collar.value.trim()) lines.push(`襟：${collar.value.trim()}`);
+    if(jt!=='jacket_only'){
+      lines.push('');
+      lines.push('・パンツ');
+      lines.push(`ウエスト：${cm('jp-waist')}`);
+      lines.push(`総丈：${cm('jp-sozo')}`);
+      lines.push(`股下：${cm('jp-inseam')}`);
+    }
+    lines.push('');
+  }
+
+  if(appeal){
+    lines.push('■ アピールポイント・状態の詳細');
+    lines.push(appeal);
+    lines.push('');
+  }
+
+  if(shipObj) lines.push(`【配送方法】${shipObj.name}`);
+  if(price)   lines.push(`【価格】¥${Number(price).toLocaleString()}`);
+  if(mgmt)    lines.push(`【管理番号】${mgmt}`);
+
+  if(tags){
+    lines.push('');
+    lines.push(tags);
+  }
+
+  genText = lines.join('\n');
+
+  if(!genText.trim()){
+    showToast('⚠️ 商品情報を入力してください');
+    return;
+  }
+
+  document.getElementById('gen-preview').textContent = genText;
+  document.getElementById('copy-ok').style.display='none';
+  document.getElementById('gen-overlay').classList.add('on');
+}
+
+function copyGenText(){
+  if(!genText) return;
+  navigator.clipboard.writeText(genText).then(()=>{
+    document.getElementById('copy-ok').style.display='block';
+    showToast('✅ クリップボードにコピーしました');
+  }).catch(()=>{
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value=genText; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    document.getElementById('copy-ok').style.display='block';
+    showToast('✅ コピーしました');
+  });
+}
+
+function closeModal(e){
+  if(e.target===document.getElementById('gen-overlay'))
+    document.getElementById('gen-overlay').classList.remove('on');
+}
+
+/* ─────────────────────────────────────────────
+   SAVE / LOAD DRAFTS
+───────────────────────────────────────────── */
+function getDrafts(){ return JSON.parse(localStorage.getItem('hs-drafts')||'[]'); }
+function putDrafts(d){ localStorage.setItem('hs-drafts', JSON.stringify(d)); }
+
+function collectFormData(){
+  return {
+    cat:selCat, cond:selCond, ship:selShip,
+    mgmt:v('f-mgmt'), name:v('f-name'), brand:v('f-brand'),
+    size:v('f-size'), appeal:v('f-appeal'), tags:v('f-tags'), price:v('f-price'),
+    suitType, hemType, suit_design:selCat==='suit'?{...suitDesign,options:[...suitDesign.options],memo:v('suit-design-memo')}:null,
+    measures: collectMeasures(),
+    customFields:[...customFields],
+    savedAt: new Date().toISOString(),
+  };
+}
+
+function collectMeasures(){
+  const schema = MEASURES[selCat];
+  if(!schema||schema==='custom') return {};
+  if(schema==='special'){
+    const collarEl=document.getElementById('jj-collar');
+    return {
+      sj_kata:m('sj-kata'),sj_mimi:m('sj-mimi'),sj_sode:m('sj-sode'),sj_take:m('sj-take'),
+      sp_waist:m('sp-waist'),sp_sozo:m('sp-sozo'),sp_inseam:m('sp-inseam'),sp_watari:m('sp-watari'),sp_hem:m('sp-hem'),sp_hemextra:m('sp-hemextra'),
+      sp_fold:m('sp-fold'),
+      sv_kata:suitThreePiece?m('sv-kata'):0, sv_mimi:suitThreePiece?m('sv-mimi'):0, sv_take:suitThreePiece?m('sv-take'):0,
+      suitThreePiece:suitThreePiece,
+    };
+  }
+  if(schema==='special_jersey'){
+    const collarEl=document.getElementById('jj-collar');
+    return {
+      jj_kata:m('jj-kata'),jj_mimi:m('jj-mimi'),jj_sode:m('jj-sode'),jj_take:m('jj-take'),
+      jj_collar:collarEl?collarEl.value.trim():'',
+      jp_waist:m('jp-waist'),jp_sozo:m('jp-sozo'),jp_inseam:m('jp-inseam'),
+      jerseyType:jerseyType,
+    };
+  }
+  const obj={};
+  schema.forEach(ms=>{ obj[ms.k]=m('m-'+ms.k); });
+  return obj;
+}
+
+function saveDraft(){
+  const data = collectFormData();
+  if(!data.name && !data.brand){
+    showToast('⚠️ 商品名またはブランド名を入力してください');return;
+  }
+  const drafts = getDrafts();
+  drafts.unshift({id:Date.now(), ...data});
+  putDrafts(drafts);
+  showToast('💾 下書きを保存しました');
+  renderSaved();
+}
+
+function loadDraft(id){
+  const drafts = getDrafts();
+  const d = drafts.find(x=>x.id===id);
+  if(!d) return;
+
+  document.getElementById('f-mgmt').value  = d.mgmt||'';
+  document.getElementById('f-name').value  = d.name||'';
+  document.getElementById('name-cnt').textContent = (d.name||'').length+'/40';
+  document.getElementById('f-brand').value = d.brand||'';
+  document.getElementById('f-size').value  = d.size||'';
+  document.getElementById('f-appeal').value= d.appeal||'';
+  document.getElementById('f-tags').value  = d.tags||'';
+  document.getElementById('f-price').value = d.price||'';
+
+  if(d.cond){ selCond=d.cond; document.querySelectorAll('.cond').forEach(x=>x.classList.toggle('on',x.dataset.id===d.cond)); }
+  if(d.ship){ selShip=d.ship; document.querySelectorAll('.ship').forEach(x=>x.classList.toggle('on',x.dataset.id===d.ship)); }
+
+  if(d.cat){ selectCat(d.cat); }
+
+  // restore measures after rendering
+  requestAnimationFrame(()=>{
+    const schema = MEASURES[d.cat];
+    if(schema && schema!=='special' && schema!=='custom' && d.measures){
+      Object.entries(d.measures).forEach(([k,val])=>{
+        const el=document.getElementById('m-'+k); if(el) el.value=val||'';
+      });
+    } else if(d.cat==='suit' && d.measures){
+      const mk = d.measures;
+      const setV=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v||''; };
+      if(d.suitType){ suitType=d.suitType; setSuitType(d.suitType); }
+      setV('sj-kata',mk.sj_kata);setV('sj-mimi',mk.sj_mimi);
+      setV('sj-sode',mk.sj_sode);setV('sj-take',mk.sj_take);
+      setV('sp-waist',mk.sp_waist);setV('sp-sozo',mk.sp_sozo);
+      setV('sp-inseam',mk.sp_inseam);setV('sp-watari',mk.sp_watari);setV('sp-hem',mk.sp_hem);setV('sp-hemextra',mk.sp_hemextra);
+      setV('sp-fold',mk.sp_fold);
+      if(d.hemType){ hemType=d.hemType; setHemType(d.hemType); }
+      if(mk.suitThreePiece){
+        suitThreePiece=true;
+        const btn=document.getElementById('three-piece-btn'); if(btn) btn.classList.add('on');
+        const sec=document.getElementById('suit-vest-sec'); if(sec) sec.style.display='block';
+        setV('sv-kata',mk.sv_kata);setV('sv-mimi',mk.sv_mimi);setV('sv-take',mk.sv_take);
+      } else { suitThreePiece=false; }
+      if(d.suit_design && typeof d.suit_design==='object'){
+        suitDesign={lining:d.suit_design.lining||'',buttons:d.suit_design.buttons||'',vent:d.suit_design.vent||'',options:[...(d.suit_design.options||[])]};
+        ['lining','buttons','vent'].forEach(g=>{
+          document.querySelectorAll(`[data-g="${g}"]`).forEach(b=>b.classList.toggle('on',b.dataset.v===suitDesign[g]));
+        });
+        document.querySelectorAll('#suit-options-rg .rb').forEach(b=>b.classList.toggle('on',suitDesign.options.includes(b.dataset.v)));
+        const memoEl=document.getElementById('suit-design-memo'); if(memoEl) memoEl.value=d.suit_design.memo||'';
+      }
+    } else if(d.cat==='jersey' && d.measures){
+      const mk=d.measures;
+      const setV2=(id,vl)=>{ const el=document.getElementById(id); if(el) el.value=vl||''; };
+      if(mk.jerseyType){ jerseyType=mk.jerseyType; setJerseyType(mk.jerseyType); }
+      setV2('jj-kata',mk.jj_kata);setV2('jj-mimi',mk.jj_mimi);setV2('jj-sode',mk.jj_sode);setV2('jj-take',mk.jj_take);
+      const colEl=document.getElementById('jj-collar'); if(colEl) colEl.value=mk.jj_collar||'';
+      setV2('jp-waist',mk.jp_waist);setV2('jp-sozo',mk.jp_sozo);setV2('jp-inseam',mk.jp_inseam);
+    }
+  });
+
+  switchTab('input');
+  showToast('📂 下書きを読み込みました');
+  window.scrollTo(0,0);
+}
+
+function deleteDraft(id){
+  if(!confirm('この下書きを削除しますか？')) return;
+  const drafts = getDrafts().filter(x=>x.id!==id);
+  putDrafts(drafts);
+  renderSaved();
+  showToast('🗑️ 削除しました');
+}
+
+function renderSaved(){
+  const list = document.getElementById('saved-list');
+  const drafts = getDrafts();
+  if(!drafts.length){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">📭</div>保存済みの下書きはありません</div>`;
+    return;
+  }
+  list.innerHTML = drafts.map(d=>{
+    const catObj = CATS.find(c=>c.id===d.cat);
+    const date = new Date(d.savedAt).toLocaleDateString('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    return `<div class="saved-item">
+      <div class="si-top">
+        <div class="si-name">${d.name||'（商品名未入力）'}</div>
+        ${catObj?`<span class="si-cat">${catObj.icon} ${catObj.label}</span>`:''}
+      </div>
+      <div class="si-meta">${d.brand?d.brand+' · ':''}${date}</div>
+      <div class="si-acts">
+        <button class="btn-sm btn-sm-red" onclick="loadDraft(${d.id})">📂 読み込む</button>
+        <button class="btn-sm btn-sm-outline" onclick="copyDraftText(${d.id})">📋 コピー</button>
+        <button class="btn-sm btn-sm-gray" onclick="deleteDraft(${d.id})">🗑️ 削除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function copyDraftText(id){
+  const drafts = getDrafts();
+  const d = drafts.find(x=>x.id===id);
+  if(!d) return;
+  // temporarily load and generate without switching view
+  // Simple approach: rebuild text from stored data
+  const catObj  = CATS.find(c=>c.id===d.cat);
+  const condObj = CONDITIONS.find(c=>c.id===d.cond);
+  const shipObj = SHIPPING.find(s=>s.id===d.ship);
+  const schema  = MEASURES[d.cat];
+  let lines=[];
+  if(d.name)  lines.push(`【商品名】${d.name}`);
+  if(d.brand) lines.push(`【ブランド】${d.brand}`);
+  if(d.size)  lines.push(`【サイズ表記】${d.size}`);
+  if(condObj) lines.push(`【商品の状態】${condObj.name}`);
+  lines.push('');
+  if(schema && schema!=='special' && schema!=='special_jersey' && schema!=='custom' && d.measures){
+    lines.push('■ 採寸データ（平置き実寸）');
+    Object.entries(d.measures).forEach(([k,v])=>{ if(v>0) lines.push(`${k}：${v}cm`); });
+    lines.push('');
+  } else if(d.cat==='suit' && d.measures){
+    const mk=d.measures;
+    const st=d.suitType||'setup';
+    const stLabel=st==='setup'?'セットアップ':st==='jacket'?'ジャケット単品':'パンツ単品';
+    lines=[];
+    lines.push('コメントなしの即購入、歓迎です！');
+    lines.push('');lines.push('・24時間以内発送');lines.push('・匿名配送');
+    lines.push('');lines.push('');
+    lines.push('■その他同サイズスーツ');lines.push('#ひなたスーツS');
+    lines.push('');lines.push('');
+    lines.push('■ブランド');
+    if(d.brand) lines.push(d.brand);
+    lines.push('');lines.push('ビジネススーツ');lines.push(stLabel);
+    if(st==='setup') lines.push('ジャケット　スラックス');
+    lines.push('');
+    if(d.suit_design && typeof d.suit_design==='object'){
+      const sd=d.suit_design; const dparts=[];
+      if(sd.lining) dparts.push(sd.lining); if(sd.buttons) dparts.push(sd.buttons); if(sd.vent) dparts.push(sd.vent);
+      (sd.options||[]).forEach(o=>dparts.push(o)); if(sd.memo) dparts.push(sd.memo);
+      if(dparts.length){lines.push('■デザイン');dparts.forEach(p=>lines.push(p));lines.push('');}
+    }
+    lines.push('');
+    lines.push(`■サイズ${d.size?' ('+d.size+')':''}`);
+    if(st!=='pants_only'){
+      lines.push('・ジャケット');
+      lines.push(`着丈：${mk.sj_take||0}cm`);lines.push(`肩幅：${mk.sj_kata||0}cm`);
+      lines.push(`身幅：${mk.sj_mimi||0}cm`);lines.push(`袖丈：${mk.sj_sode||0}cm`);
+      if(mk.suitThreePiece){
+        lines.push('');lines.push('・ベスト');
+        if(mk.sv_kata>0) lines.push(`肩幅：${mk.sv_kata}cm`);
+        if(mk.sv_mimi>0) lines.push(`身幅：${mk.sv_mimi}cm`);
+        if(mk.sv_take>0) lines.push(`着丈：${mk.sv_take}cm`);
+      }
+    }
+    if(st!=='jacket'){
+      if(st!=='pants_only') lines.push('');
+      lines.push('・パンツ');
+      lines.push(`ウエスト：${mk.sp_waist||0}cm`);lines.push(`総丈：${mk.sp_sozo||0}cm`);
+      if(mk.sp_inseam>0) lines.push(`股下：${mk.sp_inseam}cm`);
+      lines.push(`わたり幅：${mk.sp_watari||0}cm`);lines.push(`裾幅：${mk.sp_hem||0}cm`);
+      if(mk.sp_hemextra>0) lines.push(`裾余り：${mk.sp_hemextra}cm`);
+      lines.push('');
+      lines.push(d.hemType==='double'?`裾ダブル仕上げ${mk.sp_fold>0?' （折り返し'+mk.sp_fold+'cm）':''}`:'裾シングル仕上げ');
+    }
+    lines.push('');lines.push('※平置き実寸。素人採寸です。');lines.push('誤差はご了承ください。');
+    lines.push('');lines.push('■状態');lines.push(d.appeal||'');
+    lines.push('');lines.push('■補足');
+    lines.push('あくまでも中古品です。');lines.push('新品をお求めの方、神経質な方はご遠慮下さい。');
+    lines.push('ご理解頂ける方ご購入お待ちしております。');
+    lines.push('');lines.push('');lines.push('■発送');
+    lines.push('※送料の関係でコンパクトに畳んで発送いたします。');
+    lines.push('畳みジワが発生しますことをご了承くださいませ。');
+    lines.push('');
+    lines.push('結婚式 、二次会、ウエディングフォト、成人式、卒業式、入学式、セレモニー、パーティー、式典、舞台衣装、ステージ衣装、ライブ、スーツ、プライベートとオールシーズン様々なシーンで活躍します。');
+    if(d.mgmt) lines.push(`\n【管理番号】${d.mgmt}`);
+  }
+  if(d.cat==='jersey' && d.measures){
+    const mk=d.measures;
+    const jt=mk.jerseyType||'setup';
+    const jtLabel=jt==='setup'?'セットアップ':'トラックジャケット';
+    lines.push(`■ 採寸データ（平置き実寸）【ジャージ ${jtLabel}】`);
+    lines.push('・ジャケット');
+    if(mk.jj_kata>0) lines.push(`肩幅：${mk.jj_kata}cm`);
+    if(mk.jj_mimi>0) lines.push(`身幅：${mk.jj_mimi}cm`);
+    if(mk.jj_sode>0) lines.push(`袖丈：${mk.jj_sode}cm`);
+    if(mk.jj_take>0) lines.push(`着丈：${mk.jj_take}cm`);
+    if(mk.jj_collar) lines.push(`襟：${mk.jj_collar}`);
+    if(jt!=='jacket_only'){
+      lines.push('');lines.push('・パンツ');
+      if(mk.jp_waist>0) lines.push(`ウエスト：${mk.jp_waist}cm`);
+      if(mk.jp_sozo>0) lines.push(`総丈：${mk.jp_sozo}cm`);
+      if(mk.jp_inseam>0) lines.push(`股下：${mk.jp_inseam}cm`);
+    }
+    lines.push('');
+  }
+  if(d.cat!=='suit'){
+    if(d.appeal){ lines.push('■ アピールポイント・状態の詳細');lines.push(d.appeal);lines.push(''); }
+    if(shipObj) lines.push(`【配送方法】${shipObj.name}`);
+    if(d.price) lines.push(`【価格】¥${Number(d.price).toLocaleString()}`);
+    if(d.mgmt)  lines.push(`【管理番号】${d.mgmt}`);
+    if(d.tags){ lines.push('');lines.push(d.tags); }
+  }
+  const txt = lines.join('\n');
+  navigator.clipboard.writeText(txt).then(()=>showToast('✅ コピーしました')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    showToast('✅ コピーしました');
+  });
+}
+
+/* ─────────────────────────────────────────────
+   TABS
+───────────────────────────────────────────── */
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===id));
+  document.querySelectorAll('.panel').forEach(p=>{
+    p.classList.toggle('on', p.id==='panel-'+id);
+  });
+  if(id==='saved') renderSaved();
+}
+
+/* ─────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────── */
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('on');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.classList.remove('on'),2400);
+}
+
+/* ─────────────────────────────────────────────
+   BOOT
+───────────────────────────────────────────── */
+init();
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>

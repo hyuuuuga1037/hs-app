@@ -1,0 +1,19 @@
+{
+  "name": "出品アシスタント",
+  "short_name": "出品アシスタント",
+  "description": "メルカリ出品 依頼文ジェネレーター",
+  "start_url": "./出品アシスタント.html",
+  "display": "standalone",
+  "background_color": "#F4F4F6",
+  "theme_color": "#E8503A",
+  "orientation": "portrait",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -319,6 +319,8 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
 'use strict';
 
@@ -909,10 +911,51 @@ function closeModal(e){
 }
 
 /* ─────────────────────────────────────────────
+   FIREBASE 設定 & 下書き同期
+───────────────────────────────────────────── */
+const _fbConfig = {
+  apiKey: "AIzaSyDCK9lsBJsc-UxzxcfxMPdJS94V1gZb2k8",
+  authDomain: "hs-tools-86dab.firebaseapp.com",
+  projectId: "hs-tools-86dab",
+  storageBucket: "hs-tools-86dab.firebasestorage.app",
+  messagingSenderId: "755265926130",
+  appId: "1:755265926130:web:257584deb277fc7ce3716b"
+};
+// Firebase が既に初期化済みか確認（在庫管理と共有の場合）
+if (!firebase.apps.length) firebase.initializeApp(_fbConfig);
+const _fsDB = firebase.firestore();
+
+let _drafts = [];
+let _draftIds = new Set();
+
+function initFirestoreDrafts() {
+  _fsDB.collection('drafts').orderBy('savedAt', 'desc').onSnapshot(snapshot => {
+    _drafts = snapshot.docs.map(doc => doc.data());
+    _draftIds = new Set(snapshot.docs.map(doc => doc.id));
+    // 下書きタブが開いていたら再描画
+    if (document.getElementById('panel-saved')?.classList.contains('on')) renderSaved();
+  }, err => {
+    console.error('Firestore下書きエラー:', err);
+    _drafts = JSON.parse(localStorage.getItem('hs-drafts') || '[]');
+  });
+}
+
+/* ─────────────────────────────────────────────
    SAVE / LOAD DRAFTS
 ───────────────────────────────────────────── */
-function getDrafts(){ return JSON.parse(localStorage.getItem('hs-drafts')||'[]'); }
-function putDrafts(d){ localStorage.setItem('hs-drafts', JSON.stringify(d)); }
+function getDrafts(){ return _drafts; }
+function putDrafts(d){
+  _drafts = d;
+  const batch = _fsDB.batch();
+  const colRef = _fsDB.collection('drafts');
+  const newIds = new Set(d.map(item => String(item.id)));
+  _draftIds.forEach(id => { if (!newIds.has(id)) batch.delete(colRef.doc(id)); });
+  d.forEach(item => batch.set(colRef.doc(String(item.id)), item));
+  batch.commit().then(() => { _draftIds = newIds; }).catch(err => {
+    console.error('Firestore下書き保存エラー:', err);
+    localStorage.setItem('hs-drafts', JSON.stringify(d)); // フォールバック
+  });
+}
 
 function collectFormData(){
   return {
@@ -1197,6 +1240,7 @@ function showToast(msg){
 /* ─────────────────────────────────────────────
    BOOT
 ───────────────────────────────────────────── */
+initFirestoreDrafts(); // Firestore下書き同期開始
 init();
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));

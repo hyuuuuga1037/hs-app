@@ -180,6 +180,15 @@
     /* scrollbar thin */
     ::-webkit-scrollbar{width:4px;height:4px}
     ::-webkit-scrollbar-thumb{background:#ccc;border-radius:4px}
+
+    /* ── DELETE MODE ── */
+    .del-mode-hdr{display:flex;justify-content:space-between;align-items:center;padding:12px 0 4px}
+    .del-lock-btn{background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--sub);font-family:inherit}
+    .del-lock-btn.active{background:var(--red-light);border-color:var(--red);color:var(--red)}
+    .saved-item.selected{border:1.5px solid var(--red);background:#fff5f4}
+    .si-check{width:22px;height:22px;accent-color:var(--red);cursor:pointer;flex-shrink:0;margin-right:4px}
+    .del-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:10px 16px 16px;box-shadow:0 -2px 12px rgba(0,0,0,.15);z-index:101;max-width:640px;margin:0 auto;display:none}
+    .del-bar.on{display:block}
   </style>
 </head>
 <body>
@@ -290,7 +299,10 @@
   <!-- BOTTOM BAR -->
   <div class="btm-bar">
     <button class="btn btn-red" onclick="generateText()">📋 説明文を生成・コピー</button>
-    <button class="btn btn-outline" onclick="saveDraft()">💾 下書きを保存</button>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-outline" style="margin-top:0" onclick="saveDraft()">💾 下書きを保存</button>
+      <button class="btn btn-outline" style="margin-top:0;color:#888;border-color:#ccc" onclick="resetForm()">🔄 リセット</button>
+    </div>
   </div>
 
 </div><!-- /panel-input -->
@@ -298,6 +310,10 @@
 <!-- ==================== SAVED PANEL ==================== -->
 <div class="panel" id="panel-saved">
   <div class="wrap">
+    <div class="del-mode-hdr">
+      <span id="del-count-label" style="font-size:13px;color:var(--sub)"></span>
+      <button class="del-lock-btn" id="del-mode-btn" onclick="toggleDeleteMode()">🔒 削除モード</button>
+    </div>
     <div id="saved-list"></div>
   </div>
 </div>
@@ -314,6 +330,26 @@
     <button class="btn btn-red" style="margin-top:14px" onclick="copyGenText()">📋 クリップボードにコピー</button>
     <button class="btn btn-outline" onclick="document.getElementById('gen-overlay').classList.remove('on')">閉じる</button>
   </div>
+</div>
+
+<!-- DELETE MODE PASSWORD MODAL -->
+<div class="overlay" id="del-pw-overlay" onclick="closePwModal(event)">
+  <div class="modal" id="del-pw-modal">
+    <div class="modal-ttl">
+      🔒 削除モード
+      <button class="modal-close" onclick="document.getElementById('del-pw-overlay').classList.remove('on')">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--sub);margin-bottom:16px">パスワードを入力してください</p>
+    <input type="password" id="del-pw-input" placeholder="パスワード" style="margin-bottom:8px" onkeydown="if(event.key==='Enter')confirmPw()">
+    <p id="del-pw-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none">パスワードが違います</p>
+    <button class="btn btn-red" onclick="confirmPw()">確認</button>
+  </div>
+</div>
+
+<!-- DELETE BAR (shown in delete mode) -->
+<div class="del-bar" id="del-bar">
+  <button class="btn btn-red" onclick="deleteSelected()">🗑️ 選択した <span id="del-sel-count">0</span> 件を削除</button>
+  <button class="btn btn-outline" style="margin-top:8px" onclick="exitDeleteMode()">キャンセル</button>
 </div>
 
 <!-- TOAST -->
@@ -793,9 +829,10 @@ function generateText(){
       lines.push('');
     }
     lines.push('');
-    lines.push(`■サイズ${size?' ('+size+')':''}`);
+    lines.push('■サイズ');
     if(st!=='pants_only'){
       lines.push('・ジャケット');
+      if(size) lines.push(`表記：${size}`);
       lines.push(`着丈：${cm('sj-take')}`);
       lines.push(`肩幅：${cm('sj-kata')}`);
       lines.push(`身幅：${cm('sj-mimi')}`);
@@ -811,16 +848,20 @@ function generateText(){
     if(st!=='jacket'){
       if(st!=='pants_only') lines.push('');
       lines.push('・パンツ');
+      if(size) lines.push(`表記　　：${size}`);
       lines.push(`ウエスト：${cm('sp-waist')}`);
-      lines.push(`総丈：${cm('sp-sozo')}`);
-      if(m('sp-inseam')>0)   lines.push(`股下：${cm('sp-inseam')}`);
+      lines.push(`総丈　　：${cm('sp-sozo')}`);
+      if(m('sp-inseam')>0)   lines.push(`股下　　：${cm('sp-inseam')}`);
       lines.push(`わたり幅：${cm('sp-watari')}`);
-      lines.push(`裾幅：${cm('sp-hem')}`);
-      if(m('sp-hemextra')>0) lines.push(`裾余り：${cm('sp-hemextra')}`);
+      lines.push(`裾幅　　：${cm('sp-hem')}`);
       lines.push('');
       lines.push(hemType==='double'
-        ? `裾ダブル仕上げ${m('sp-fold')>0?' （折り返し'+cm('sp-fold')+'）':''}`
-        : '裾シングル仕上げ');
+        ? `ダブル仕上げ${m('sp-fold')>0?' （折り返し'+cm('sp-fold')+'）':''}`
+        : 'シングル仕上げ');
+      if(m('sp-hemextra')>0){
+        lines.push('');
+        lines.push(`裾折り返し${m('sp-hemextra')}cmほどあるので、お直し可能`);
+      }
     }
     lines.push('');
     lines.push('※平置き実寸。素人採寸です。');
@@ -1091,17 +1132,22 @@ function renderSaved(){
   list.innerHTML = drafts.map(d=>{
     const catObj = CATS.find(c=>c.id===d.cat);
     const date = new Date(d.savedAt).toLocaleDateString('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    return `<div class="saved-item">
+    const isSelected = _selectedIds.has(d.id);
+    const selectedClass = isSelected ? ' selected' : '';
+    const checkbox = _deleteMode
+      ? `<input type="checkbox" class="si-check" ${isSelected?'checked':''} onchange="toggleSelect(${d.id})">`
+      : '';
+    return `<div class="saved-item${selectedClass}" onclick="${_deleteMode?`toggleSelect(${d.id})`:''}">
       <div class="si-top">
+        ${checkbox}
         <div class="si-name">${d.name||'（商品名未入力）'}</div>
         ${catObj?`<span class="si-cat">${catObj.icon} ${catObj.label}</span>`:''}
       </div>
       <div class="si-meta">${d.brand?d.brand+' · ':''}${date}</div>
-      <div class="si-acts">
+      ${!_deleteMode?`<div class="si-acts">
         <button class="btn-sm btn-sm-red" onclick="loadDraft(${d.id})">📂 読み込む</button>
         <button class="btn-sm btn-sm-outline" onclick="copyDraftText(${d.id})">📋 コピー</button>
-        <button class="btn-sm btn-sm-gray" onclick="deleteDraft(${d.id})">🗑️ 削除</button>
-      </div>
+      </div>`:''}
     </div>`;
   }).join('');
 }
@@ -1148,9 +1194,10 @@ function copyDraftText(id){
       if(dparts.length){lines.push('■デザイン');dparts.forEach(p=>lines.push(p));lines.push('');}
     }
     lines.push('');
-    lines.push(`■サイズ${d.size?' ('+d.size+')':''}`);
+    lines.push('■サイズ');
     if(st!=='pants_only'){
       lines.push('・ジャケット');
+      if(d.size) lines.push(`表記：${d.size}`);
       lines.push(`着丈：${mk.sj_take||0}cm`);lines.push(`肩幅：${mk.sj_kata||0}cm`);
       lines.push(`身幅：${mk.sj_mimi||0}cm`);lines.push(`袖丈：${mk.sj_sode||0}cm`);
       if(mk.suitThreePiece){
@@ -1163,12 +1210,13 @@ function copyDraftText(id){
     if(st!=='jacket'){
       if(st!=='pants_only') lines.push('');
       lines.push('・パンツ');
-      lines.push(`ウエスト：${mk.sp_waist||0}cm`);lines.push(`総丈：${mk.sp_sozo||0}cm`);
-      if(mk.sp_inseam>0) lines.push(`股下：${mk.sp_inseam}cm`);
-      lines.push(`わたり幅：${mk.sp_watari||0}cm`);lines.push(`裾幅：${mk.sp_hem||0}cm`);
-      if(mk.sp_hemextra>0) lines.push(`裾余り：${mk.sp_hemextra}cm`);
+      if(d.size) lines.push(`表記　　：${d.size}`);
+      lines.push(`ウエスト：${mk.sp_waist||0}cm`);lines.push(`総丈　　：${mk.sp_sozo||0}cm`);
+      if(mk.sp_inseam>0) lines.push(`股下　　：${mk.sp_inseam}cm`);
+      lines.push(`わたり幅：${mk.sp_watari||0}cm`);lines.push(`裾幅　　：${mk.sp_hem||0}cm`);
       lines.push('');
-      lines.push(d.hemType==='double'?`裾ダブル仕上げ${mk.sp_fold>0?' （折り返し'+mk.sp_fold+'cm）':''}`:'裾シングル仕上げ');
+      lines.push(d.hemType==='double'?`ダブル仕上げ${mk.sp_fold>0?' （折り返し'+mk.sp_fold+'cm）':''}`:'シングル仕上げ');
+      if(mk.sp_hemextra>0){ lines.push(''); lines.push(`裾折り返し${mk.sp_hemextra}cmほどあるので、お直し可能`); }
     }
     lines.push('');lines.push('※平置き実寸。素人採寸です。');lines.push('誤差はご了承ください。');
     lines.push('');lines.push('■状態');lines.push(d.appeal||'');
@@ -1214,6 +1262,100 @@ function copyDraftText(id){
     document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     showToast('✅ コピーしました');
   });
+}
+
+/* ─────────────────────────────────────────────
+   RESET
+───────────────────────────────────────────── */
+function resetForm(){
+  ['f-mgmt','f-name','f-brand','f-size','f-appeal','f-tags','f-price'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('name-cnt').textContent='0/40';
+  selCat=''; selCond=''; selShip='';
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.cond').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.ship').forEach(b=>b.classList.remove('on'));
+  document.getElementById('measure-area').innerHTML=
+    '<div style="color:var(--sub);text-align:center;padding:20px;font-size:13px">↑ カテゴリを選択すると採寸項目が表示されます</div>';
+  suitType='setup'; hemType='single';
+  suitDesign={lining:'',buttons:'',vent:'',options:[]};
+  jerseyType='setup'; suitThreePiece=false;
+  customFields=[{k:'',v:''},{k:'',v:''},{k:'',v:''}];
+  genText='';
+  showToast('🔄 入力をリセットしました');
+  window.scrollTo(0,0);
+}
+
+/* ─────────────────────────────────────────────
+   DELETE MODE
+───────────────────────────────────────────── */
+const _PASSWORD = '0525';
+let _deleteMode = false;
+let _selectedIds = new Set();
+
+function toggleDeleteMode(){
+  if(_deleteMode){ exitDeleteMode(); return; }
+  const overlay = document.getElementById('del-pw-overlay');
+  document.getElementById('del-pw-input').value = '';
+  document.getElementById('del-pw-err').style.display = 'none';
+  overlay.classList.add('on');
+  setTimeout(()=>document.getElementById('del-pw-input').focus(), 200);
+}
+
+function closePwModal(e){
+  if(e.target === document.getElementById('del-pw-overlay'))
+    document.getElementById('del-pw-overlay').classList.remove('on');
+}
+
+function confirmPw(){
+  const pw = document.getElementById('del-pw-input').value;
+  if(pw !== _PASSWORD){
+    document.getElementById('del-pw-err').style.display = 'block';
+    document.getElementById('del-pw-input').value = '';
+    return;
+  }
+  document.getElementById('del-pw-overlay').classList.remove('on');
+  _deleteMode = true;
+  _selectedIds = new Set();
+  document.getElementById('del-mode-btn').textContent = '✕ 削除モード終了';
+  document.getElementById('del-mode-btn').classList.add('active');
+  document.getElementById('del-bar').classList.add('on');
+  updateDelBar();
+  renderSaved();
+}
+
+function exitDeleteMode(){
+  _deleteMode = false;
+  _selectedIds = new Set();
+  document.getElementById('del-mode-btn').textContent = '🔒 削除モード';
+  document.getElementById('del-mode-btn').classList.remove('active');
+  document.getElementById('del-bar').classList.remove('on');
+  document.getElementById('del-count-label').textContent = '';
+  renderSaved();
+}
+
+function toggleSelect(id){
+  if(_selectedIds.has(id)) _selectedIds.delete(id);
+  else _selectedIds.add(id);
+  updateDelBar();
+  renderSaved();
+}
+
+function updateDelBar(){
+  const n = _selectedIds.size;
+  document.getElementById('del-sel-count').textContent = n;
+  document.getElementById('del-count-label').textContent = n > 0 ? `${n}件選択中` : '';
+}
+
+function deleteSelected(){
+  const n = _selectedIds.size;
+  if(n === 0){ showToast('削除する項目を選択してください'); return; }
+  if(!confirm(`選択した ${n} 件の下書きを削除しますか？`)) return;
+  const drafts = getDrafts().filter(x => !_selectedIds.has(x.id));
+  putDrafts(drafts);
+  showToast(`🗑️ ${n}件削除しました`);
+  exitDeleteMode();
 }
 
 /* ─────────────────────────────────────────────

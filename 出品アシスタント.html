@@ -968,6 +968,7 @@ const _fsDB = firebase.firestore();
 
 let _drafts = [];
 let _draftIds = new Set();
+let _currentDraftId = null; // 編集中の下書きIDを追跡
 
 function initFirestoreDrafts() {
   _fsDB.collection('drafts').orderBy('savedAt', 'desc').onSnapshot(snapshot => {
@@ -1043,9 +1044,22 @@ function saveDraft(){
     showToast('⚠️ 商品名またはブランド名を入力してください');return;
   }
   const drafts = getDrafts();
-  drafts.unshift({id:Date.now(), ...data});
+  if(_currentDraftId !== null){
+    // 既存の下書きを上書き
+    const idx = drafts.findIndex(d => d.id === _currentDraftId);
+    if(idx !== -1){
+      drafts[idx] = {id:_currentDraftId, ...data};
+    } else {
+      drafts.unshift({id:_currentDraftId, ...data});
+    }
+    showToast('💾 下書きを上書き保存しました');
+  } else {
+    // 新規下書き
+    _currentDraftId = Date.now();
+    drafts.unshift({id:_currentDraftId, ...data});
+    showToast('💾 下書きを保存しました');
+  }
   putDrafts(drafts);
-  showToast('💾 下書きを保存しました');
   renderSaved();
 }
 
@@ -1053,6 +1067,7 @@ function loadDraft(id){
   const drafts = getDrafts();
   const d = drafts.find(x=>x.id===id);
   if(!d) return;
+  _currentDraftId = id; // 編集中の下書きIDを記憶
 
   document.getElementById('f-mgmt').value  = d.mgmt||'';
   document.getElementById('f-name').value  = d.name||'';
@@ -1283,6 +1298,7 @@ function resetForm(){
   jerseyType='setup'; suitThreePiece=false;
   customFields=[{k:'',v:''},{k:'',v:''},{k:'',v:''}];
   genText='';
+  _currentDraftId = null; // 編集中の下書きIDをクリア
   showToast('🔄 入力をリセットしました');
   window.scrollTo(0,0);
 }

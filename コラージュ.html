@@ -118,13 +118,15 @@
   }
   .row label { font-size: 13px; }
   input[type="range"] { flex: 1; min-width: 100px; }
-  input[type="text"] {
+  input[type="text"], textarea {
     flex: 1;
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 6px;
     font-size: 14px;
     min-width: 120px;
+    font-family: inherit;
+    resize: vertical;
   }
   #textCtrls {
     background: #F8F8FA;
@@ -190,10 +192,13 @@
 
     <h2>3. 文字を入れる（任意）</h2>
     <div class="row">
-      <input type="text" id="textInput" placeholder="例：PRADA" maxlength="40">
+      <textarea id="textInput" rows="2" maxlength="200" placeholder="例：JOSEPH HOMME&#10;リネン混（改行もOK）"></textarea>
       <button class="action" id="addTextBtn">追加</button>
     </div>
     <div id="textCtrls">
+      <div class="row">
+        <textarea id="editText" rows="2" maxlength="200"></textarea>
+      </div>
       <div class="row">
         <label>大きさ</label>
         <input type="range" id="sizeRange" min="30" max="240" value="100">
@@ -201,8 +206,20 @@
       <div class="row">
         <label>色</label>
         <div class="seg" id="colorSeg">
-          <button data-c="white">白（黒フチ）</button>
-          <button data-c="black">黒（白フチ）</button>
+          <button data-c="white">白</button>
+          <button data-c="black">黒</button>
+        </div>
+        <div class="seg" id="outlineSeg">
+          <button data-o="on">フチあり</button>
+          <button data-o="off">フチなし</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>揃え</label>
+        <div class="seg" id="alignSeg">
+          <button data-a="left">左</button>
+          <button data-a="center">中央</button>
+          <button data-a="right">右</button>
         </div>
       </div>
       <div class="row">
@@ -219,6 +236,7 @@
 
     <h2>4. 保存する</h2>
     <button class="action" id="saveBtn">💾 JPEGで保存</button>
+    <button class="action sub" id="resetBtn" style="width:100%;margin-top:8px">🔄 リセット（次の画像へ）</button>
   </div>
 </div>
 
@@ -307,20 +325,28 @@ function draw(interactive = true) {
   // 文字
   texts.forEach((t, i) => {
     ctx.font = fontFor(t);
-    ctx.textAlign = 'center';
+    ctx.textAlign = t.align;
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
-    ctx.lineWidth = Math.max(2, t.size * 0.08);
-    ctx.strokeStyle = t.color === 'white' ? '#000' : '#fff';
     ctx.fillStyle = t.color === 'white' ? '#fff' : '#000';
-    ctx.strokeText(t.text, t.x, t.y);
-    ctx.fillText(t.text, t.x, t.y);
+    if (t.outline) {
+      ctx.lineWidth = Math.max(2, t.size * 0.08);
+      ctx.strokeStyle = t.color === 'white' ? '#000' : '#fff';
+    }
+    const lines = t.text.split('\n');
+    const lh = t.size * 1.2;
+    const startY = t.y - (lines.length - 1) * lh / 2;
+    lines.forEach((ln, j) => {
+      const y = startY + j * lh;
+      if (t.outline) ctx.strokeText(ln, t.x, y);
+      ctx.fillText(ln, t.x, y);
+    });
     if (interactive && i === selectedText) {
-      const w = ctx.measureText(t.text).width;
+      const b = textBBox(t);
       ctx.strokeStyle = '#E8503A';
       ctx.lineWidth = 3;
       ctx.setLineDash([10, 8]);
-      ctx.strokeRect(t.x - w / 2 - 14, t.y - t.size / 2 - 14, w + 28, t.size + 28);
+      ctx.strokeRect(b.x - 14, b.y - 14, b.w + 28, b.h + 28);
       ctx.setLineDash([]);
     }
   });
@@ -401,12 +427,20 @@ function toCanvas(e) {
   return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
 }
 
+function textBBox(t) {
+  ctx.font = fontFor(t);
+  const lines = t.text.split('\n');
+  const lh = t.size * 1.2;
+  const w = Math.max(...lines.map(l => ctx.measureText(l).width), 10);
+  const h = (lines.length - 1) * lh + t.size;
+  const x = t.align === 'left' ? t.x : t.align === 'right' ? t.x - w : t.x - w / 2;
+  return { x, y: t.y - h / 2, w, h };
+}
+
 function hitText(p) {
   for (let i = texts.length - 1; i >= 0; i--) {
-    const t = texts[i];
-    ctx.font = fontFor(t);
-    const w = ctx.measureText(t.text).width;
-    if (Math.abs(p.x - t.x) <= w / 2 + 20 && Math.abs(p.y - t.y) <= t.size / 2 + 20) return i;
+    const b = textBBox(texts[i]);
+    if (p.x >= b.x - 20 && p.x <= b.x + b.w + 20 && p.y >= b.y - 20 && p.y <= b.y + b.h + 20) return i;
   }
   return -1;
 }
@@ -491,6 +525,8 @@ function selectText(i) {
   updateTextCtrls();
 }
 
+const editText = document.getElementById('editText');
+
 function updateTextCtrls() {
   if (selectedText < 0 || !texts[selectedText]) {
     textCtrls.classList.remove('show');
@@ -498,18 +534,27 @@ function updateTextCtrls() {
   }
   const t = texts[selectedText];
   textCtrls.classList.add('show');
+  if (editText.value !== t.text) editText.value = t.text;
   sizeRange.value = t.size;
   document.querySelectorAll('#colorSeg button').forEach(b => b.classList.toggle('on', b.dataset.c === t.color));
+  document.querySelectorAll('#outlineSeg button').forEach(b => b.classList.toggle('on', (b.dataset.o === 'on') === t.outline));
+  document.querySelectorAll('#alignSeg button').forEach(b => b.classList.toggle('on', b.dataset.a === t.align));
   document.querySelectorAll('#fontSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === t.font));
 }
 
 document.getElementById('addTextBtn').onclick = () => {
   const input = document.getElementById('textInput');
-  const v = input.value.trim();
-  if (!v) { alert('文字を入力してください'); return; }
-  texts.push({ text: v, x: W / 2, y: H * 0.18, size: 100, color: 'white', font: 'serif' });
+  const v = input.value.replace(/\s+$/, '');
+  if (!v.trim()) { alert('文字を入力してください'); return; }
+  texts.push({ text: v, x: W / 2, y: H * 0.18, size: 100, color: 'white', font: 'serif', outline: true, align: 'center' });
   input.value = '';
   selectText(texts.length - 1);
+  draw();
+};
+
+editText.oninput = () => {
+  if (selectedText < 0) return;
+  texts[selectedText].text = editText.value;
   draw();
 };
 
@@ -522,6 +567,20 @@ sizeRange.oninput = () => {
 document.querySelectorAll('#colorSeg button').forEach(b => b.onclick = () => {
   if (selectedText < 0) return;
   texts[selectedText].color = b.dataset.c;
+  updateTextCtrls();
+  draw();
+});
+
+document.querySelectorAll('#outlineSeg button').forEach(b => b.onclick = () => {
+  if (selectedText < 0) return;
+  texts[selectedText].outline = b.dataset.o === 'on';
+  updateTextCtrls();
+  draw();
+});
+
+document.querySelectorAll('#alignSeg button').forEach(b => b.onclick = () => {
+  if (selectedText < 0) return;
+  texts[selectedText].align = b.dataset.a;
   updateTextCtrls();
   draw();
 });
@@ -546,6 +605,16 @@ const gapRange = document.getElementById('gapRange');
 gapRange.oninput = () => {
   gap = +gapRange.value;
   document.getElementById('gapVal').textContent = gap + 'px';
+  draw();
+};
+
+// ===== リセット =====
+document.getElementById('resetBtn').onclick = () => {
+  if ((slots.some(s => s) || texts.length) && !confirm('写真と文字をすべてクリアして、次の画像に移りますか？')) return;
+  slots = [];
+  texts = [];
+  selectedText = -1;
+  updateTextCtrls();
   draw();
 };
 

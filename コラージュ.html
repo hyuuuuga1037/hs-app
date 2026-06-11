@@ -108,6 +108,7 @@
     color: #E8503A;
     border: 2px solid #E8503A;
   }
+  button.action.sub.on { background: #FDEDEA; }
   button.action:active { opacity: .8; }
   .row {
     display: flex;
@@ -188,6 +189,9 @@
     <div class="row">
       <button class="action" id="pickBtn">📷 写真をまとめて選択</button>
       <button class="action sub" id="clearBtn">写真を全部クリア</button>
+    </div>
+    <div class="row">
+      <button class="action sub" id="swapBtn" style="width:100%">🔁 写真の配置を入れ替え</button>
     </div>
 
     <h2>3. 文字を入れる（任意）</h2>
@@ -322,6 +326,13 @@ function draw(interactive = true) {
       }
     }
   });
+  // 入れ替えモード：1つ目に選んだ写真を枠で表示
+  if (interactive && swapMode && swapFirst >= 0 && rects[swapFirst]) {
+    const r = rects[swapFirst];
+    ctx.strokeStyle = '#E8503A';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10);
+  }
   // 文字
   texts.forEach((t, i) => {
     ctx.font = fontFor(t);
@@ -374,6 +385,7 @@ LAYOUTS.forEach((lay, idx) => {
   btn.appendChild(num);
   btn.onclick = () => {
     layout = lay;
+    endSwap();
     document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     draw();
@@ -399,6 +411,7 @@ fileInput.onchange = () => {
 document.getElementById('clearBtn').onclick = () => {
   if (slots.some(s => s) && !confirm('写真を全部クリアしますか？')) return;
   slots = [];
+  endSwap();
   draw();
 };
 
@@ -445,10 +458,48 @@ function hitText(p) {
   return -1;
 }
 
+// ===== 写真の入れ替え =====
+let swapMode = false, swapFirst = -1;
+const swapBtn = document.getElementById('swapBtn');
+
+function endSwap() {
+  swapMode = false;
+  swapFirst = -1;
+  swapBtn.classList.remove('on');
+  swapBtn.textContent = '🔁 写真の配置を入れ替え';
+}
+
+swapBtn.onclick = () => {
+  if (swapMode) { endSwap(); draw(); return; }
+  if (slots.filter(s => s && s.img).length < 1) { alert('先に写真を入れてください'); return; }
+  swapMode = true;
+  swapFirst = -1;
+  swapBtn.classList.add('on');
+  swapBtn.textContent = '入れ替えたい写真を順に2つクリック（中止はもう一度押す）';
+  draw();
+};
+
 let drag = null; // {type:'text'|'photo', idx, startX, startY, ...}
 
 cv.addEventListener('pointerdown', e => {
   const p = toCanvas(e);
+  if (swapMode) {
+    const rects = cellRects(layout);
+    const ci = rects.findIndex(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+    if (ci < 0) return;
+    if (swapFirst < 0) {
+      if (slots[ci] && slots[ci].img) swapFirst = ci;
+    } else if (ci === swapFirst) {
+      swapFirst = -1;
+    } else {
+      const tmp = slots[swapFirst];
+      slots[swapFirst] = slots[ci];
+      slots[ci] = tmp;
+      endSwap();
+    }
+    draw();
+    return;
+  }
   const ti = hitText(p);
   if (ti >= 0) {
     selectText(ti);
@@ -614,6 +665,7 @@ document.getElementById('resetBtn').onclick = () => {
   slots = [];
   texts = [];
   selectedText = -1;
+  endSwap();
   updateTextCtrls();
   draw();
 };

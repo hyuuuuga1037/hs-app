@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コラージュメーカー</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+    background: #F4F4F6;
+    color: #333;
+  }
+  header {
+    background: #E8503A;
+    color: #fff;
+    padding: 14px 20px;
+    font-size: 18px;
+    font-weight: bold;
+  }
+  .main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+    align-items: flex-start;
+  }
+  .canvas-wrap {
+    flex: 0 0 auto;
+  }
+  #cv {
+    width: min(560px, 92vw);
+    height: auto;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    touch-action: none;
+    cursor: pointer;
+    display: block;
+  }
+  .hint {
+    font-size: 12px;
+    color: #888;
+    margin-top: 8px;
+    line-height: 1.7;
+  }
+  .panel {
+    flex: 1 1 300px;
+    min-width: 280px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .panel h2 {
+    font-size: 14px;
+    color: #E8503A;
+    border-bottom: 2px solid #E8503A;
+    padding-bottom: 4px;
+    margin: 18px 0 10px;
+  }
+  .panel h2:first-child { margin-top: 0; }
+  #layouts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .layout-btn {
+    border: 2px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    padding: 4px;
+    cursor: pointer;
+    text-align: center;
+  }
+  .layout-btn.active { border-color: #E8503A; background: #FDEDEA; }
+  .layout-thumb {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    background: #fff;
+  }
+  .layout-thumb div {
+    position: absolute;
+    background: #d8d8dc;
+    border: 1px solid #fff;
+  }
+  .layout-num {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    margin-top: 2px;
+  }
+  button.action {
+    background: #E8503A;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button.action.sub {
+    background: #fff;
+    color: #E8503A;
+    border: 2px solid #E8503A;
+  }
+  button.action:active { opacity: .8; }
+  .row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .row label { font-size: 13px; }
+  input[type="range"] { flex: 1; min-width: 100px; }
+  input[type="text"] {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    min-width: 120px;
+  }
+  #textCtrls {
+    background: #F8F8FA;
+    border-radius: 6px;
+    padding: 10px;
+    margin-top: 8px;
+    display: none;
+  }
+  #textCtrls.show { display: block; }
+  .seg {
+    display: flex;
+    gap: 4px;
+  }
+  .seg button {
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .seg button.on { background: #E8503A; color: #fff; border-color: #E8503A; }
+  .del-btn {
+    background: #fff;
+    color: #c00;
+    border: 1px solid #c00;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #saveBtn { width: 100%; padding: 14px; font-size: 16px; }
+</style>
+</head>
+<body>
+<header>🖼️ コラージュメーカー（1080×1080）</header>
+
+<div class="main">
+  <div class="canvas-wrap">
+    <canvas id="cv" width="1080" height="1080"></canvas>
+    <div class="hint">
+      ・空きマスをクリック → 写真を選択（複数選択OK、順に入ります）<br>
+      ・写真をドラッグ → 位置調整 ／ マウスホイール → 拡大縮小<br>
+      ・写真をダブルクリック → その写真を削除<br>
+      ・文字はドラッグで移動できます
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>1. レイアウトを選ぶ</h2>
+    <div id="layouts"></div>
+    <div class="row" style="margin-top:10px">
+      <label>区切り線の太さ</label>
+      <input type="range" id="gapRange" min="0" max="24" value="6">
+      <span id="gapVal" style="font-size:12px;color:#888">6px</span>
+    </div>
+
+    <h2>2. 写真を入れる</h2>
+    <div class="row">
+      <button class="action" id="pickBtn">📷 写真をまとめて選択</button>
+      <button class="action sub" id="clearBtn">写真を全部クリア</button>
+    </div>
+
+    <h2>3. 文字を入れる（任意）</h2>
+    <div class="row">
+      <input type="text" id="textInput" placeholder="例：PRADA" maxlength="40">
+      <button class="action" id="addTextBtn">追加</button>
+    </div>
+    <div id="textCtrls">
+      <div class="row">
+        <label>大きさ</label>
+        <input type="range" id="sizeRange" min="30" max="240" value="100">
+      </div>
+      <div class="row">
+        <label>色</label>
+        <div class="seg" id="colorSeg">
+          <button data-c="white">白（黒フチ）</button>
+          <button data-c="black">黒（白フチ）</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>書体</label>
+        <div class="seg" id="fontSeg">
+          <button data-f="serif">明朝系</button>
+          <button data-f="sans">ゴシック</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="del-btn" id="delTextBtn">この文字を削除</button>
+      </div>
+    </div>
+
+    <h2>4. 保存する</h2>
+    <button class="action" id="saveBtn">💾 JPEGで保存</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" multiple hidden>
+
+<script>
+const W = 1080, H = 1080;
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+
+// ===== レイアウト定義（番号付き：不要なものは番号で指定して削除できます） =====
+const LAYOUTS = [
+  { id: 1,  name: '1枚',      cells: [[0,0,1,1]] },
+  { id: 2,  name: '上下2枚',  cells: [[0,0,1,.5],[0,.5,1,.5]] },
+  { id: 3,  name: '左右2枚',  cells: [[0,0,.5,1],[.5,0,.5,1]] },
+  { id: 4,  name: '縦3段',    cells: [[0,0,1,1/3],[0,1/3,1,1/3],[0,2/3,1,1/3]] },
+  { id: 5,  name: '上1下2',   cells: [[0,0,1,.5],[0,.5,.5,.5],[.5,.5,.5,.5]] },
+  { id: 6,  name: '左1右2',   cells: [[0,0,.5,1],[.5,0,.5,.5],[.5,.5,.5,.5]] },
+  { id: 7,  name: '2×2',     cells: [[0,0,.5,.5],[.5,0,.5,.5],[0,.5,.5,.5],[.5,.5,.5,.5]] },
+  { id: 8,  name: '上1下3',   cells: [[0,0,1,.5],[0,.5,1/3,.5],[1/3,.5,1/3,.5],[2/3,.5,1/3,.5]] },
+  { id: 9,  name: '左1右4',   cells: [[0,0,.5,1],[.5,0,.25,.5],[.75,0,.25,.5],[.5,.5,.25,.5],[.75,.5,.25,.5]] },
+  { id: 10, name: '上2下3',   cells: [[0,0,.5,.5],[.5,0,.5,.5],[0,.5,1/3,.5],[1/3,.5,1/3,.5],[2/3,.5,1/3,.5]] },
+];
+
+// ===== 状態 =====
+let layout = LAYOUTS[1];           // 初期：上下2枚
+let slots = [];                    // セルごとの写真 {img, z, ox, oy} or null
+let texts = [];                    // {text, x, y, size, color, font}
+let selectedText = -1;
+let gap = 6;
+let pickTarget = 0;
+
+function cellRects(lay) {
+  return lay.cells.map(c => {
+    const [cx, cy, cw, ch] = c;
+    const x1 = cx === 0 ? 0 : cx * W + gap / 2;
+    const y1 = cy === 0 ? 0 : cy * H + gap / 2;
+    const x2 = (cx + cw) >= 0.999 ? W : (cx + cw) * W - gap / 2;
+    const y2 = (cy + ch) >= 0.999 ? H : (cy + ch) * H - gap / 2;
+    return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+  });
+}
+
+function clampSlot(s, r) {
+  const s0 = Math.max(r.w / s.img.naturalWidth, r.h / s.img.naturalHeight);
+  const sc = s0 * s.z;
+  const dw = s.img.naturalWidth * sc, dh = s.img.naturalHeight * sc;
+  const maxOx = (dw - r.w) / 2, maxOy = (dh - r.h) / 2;
+  s.ox = Math.max(-maxOx, Math.min(maxOx, s.ox));
+  s.oy = Math.max(-maxOy, Math.min(maxOy, s.oy));
+  return { sc, dw, dh };
+}
+
+function fontFor(t) {
+  return 'bold ' + t.size + 'px ' + (t.font === 'sans'
+    ? '"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif'
+    : '"Times New Roman","Yu Mincho",serif');
+}
+
+function draw(interactive = true) {
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+  const rects = cellRects(layout);
+  rects.forEach((r, i) => {
+    const s = slots[i];
+    if (s && s.img) {
+      const { sc, dw, dh } = clampSlot(s, r);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(r.x, r.y, r.w, r.h);
+      ctx.clip();
+      ctx.drawImage(s.img, r.x + (r.w - dw) / 2 + s.ox, r.y + (r.h - dh) / 2 + s.oy, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#EFEFF2';
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      if (interactive) {
+        ctx.fillStyle = '#AAAAB0';
+        ctx.font = 'bold 40px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('＋ クリックで写真', r.x + r.w / 2, r.y + r.h / 2);
+      }
+    }
+  });
+  // 文字
+  texts.forEach((t, i) => {
+    ctx.font = fontFor(t);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(2, t.size * 0.08);
+    ctx.strokeStyle = t.color === 'white' ? '#000' : '#fff';
+    ctx.fillStyle = t.color === 'white' ? '#fff' : '#000';
+    ctx.strokeText(t.text, t.x, t.y);
+    ctx.fillText(t.text, t.x, t.y);
+    if (interactive && i === selectedText) {
+      const w = ctx.measureText(t.text).width;
+      ctx.strokeStyle = '#E8503A';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 8]);
+      ctx.strokeRect(t.x - w / 2 - 14, t.y - t.size / 2 - 14, w + 28, t.size + 28);
+      ctx.setLineDash([]);
+    }
+  });
+}
+
+// ===== レイアウトボタン =====
+const layoutsEl = document.getElementById('layouts');
+LAYOUTS.forEach((lay, idx) => {
+  const btn = document.createElement('button');
+  btn.className = 'layout-btn' + (lay === layout ? ' active' : '');
+  const thumb = document.createElement('div');
+  thumb.className = 'layout-thumb';
+  lay.cells.forEach(c => {
+    const d = document.createElement('div');
+    d.style.left = (c[0] * 100) + '%';
+    d.style.top = (c[1] * 100) + '%';
+    d.style.width = (c[2] * 100) + '%';
+    d.style.height = (c[3] * 100) + '%';
+    thumb.appendChild(d);
+  });
+  const num = document.createElement('div');
+  num.className = 'layout-num';
+  num.textContent = lay.id + '. ' + lay.name;
+  btn.appendChild(thumb);
+  btn.appendChild(num);
+  btn.onclick = () => {
+    layout = lay;
+    document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    draw();
+  };
+  layoutsEl.appendChild(btn);
+});
+
+// ===== 写真読み込み =====
+const fileInput = document.getElementById('fileInput');
+document.getElementById('pickBtn').onclick = () => { pickTarget = 0; fileInput.click(); };
+fileInput.onchange = () => {
+  const files = [...fileInput.files];
+  fileInput.value = '';
+  files.forEach((f, i) => {
+    const idx = pickTarget + i;
+    if (idx >= layout.cells.length) return;
+    const img = new Image();
+    img.onload = () => { slots[idx] = { img, z: 1, ox: 0, oy: 0 }; draw(); };
+    img.src = URL.createObjectURL(f);
+  });
+};
+
+document.getElementById('clearBtn').onclick = () => {
+  if (slots.some(s => s) && !confirm('写真を全部クリアしますか？')) return;
+  slots = [];
+  draw();
+};
+
+// ドラッグ＆ドロップ
+cv.addEventListener('dragover', e => e.preventDefault());
+cv.addEventListener('drop', e => {
+  e.preventDefault();
+  const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  const p = toCanvas(e);
+  const rects = cellRects(layout);
+  let start = rects.findIndex(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+  if (start < 0) start = 0;
+  files.forEach((f, i) => {
+    const idx = start + i;
+    if (idx >= layout.cells.length) return;
+    const img = new Image();
+    img.onload = () => { slots[idx] = { img, z: 1, ox: 0, oy: 0 }; draw(); };
+    img.src = URL.createObjectURL(f);
+  });
+});
+
+// ===== 操作（ドラッグ・ズーム・クリック） =====
+function toCanvas(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+}
+
+function hitText(p) {
+  for (let i = texts.length - 1; i >= 0; i--) {
+    const t = texts[i];
+    ctx.font = fontFor(t);
+    const w = ctx.measureText(t.text).width;
+    if (Math.abs(p.x - t.x) <= w / 2 + 20 && Math.abs(p.y - t.y) <= t.size / 2 + 20) return i;
+  }
+  return -1;
+}
+
+let drag = null; // {type:'text'|'photo', idx, startX, startY, ...}
+
+cv.addEventListener('pointerdown', e => {
+  const p = toCanvas(e);
+  const ti = hitText(p);
+  if (ti >= 0) {
+    selectText(ti);
+    drag = { type: 'text', idx: ti, dx: p.x - texts[ti].x, dy: p.y - texts[ti].y, moved: false };
+    cv.setPointerCapture(e.pointerId);
+    draw();
+    return;
+  }
+  const rects = cellRects(layout);
+  const ci = rects.findIndex(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+  if (ci < 0) return;
+  if (slots[ci] && slots[ci].img) {
+    drag = { type: 'photo', idx: ci, px: p.x, py: p.y, ox: slots[ci].ox, oy: slots[ci].oy, moved: false };
+    cv.setPointerCapture(e.pointerId);
+  } else {
+    drag = { type: 'empty', idx: ci, moved: false };
+  }
+  if (selectedText >= 0) { selectedText = -1; updateTextCtrls(); draw(); }
+});
+
+cv.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const p = toCanvas(e);
+  if (drag.type === 'text') {
+    drag.moved = true;
+    texts[drag.idx].x = p.x - drag.dx;
+    texts[drag.idx].y = p.y - drag.dy;
+    draw();
+  } else if (drag.type === 'photo') {
+    drag.moved = true;
+    const s = slots[drag.idx];
+    s.ox = drag.ox + (p.x - drag.px);
+    s.oy = drag.oy + (p.y - drag.py);
+    draw();
+  }
+});
+
+cv.addEventListener('pointerup', e => {
+  if (drag && drag.type === 'empty' && !drag.moved) {
+    pickTarget = drag.idx;
+    fileInput.click();
+  }
+  drag = null;
+});
+
+cv.addEventListener('dblclick', e => {
+  const p = toCanvas(e);
+  if (hitText(p) >= 0) return;
+  const rects = cellRects(layout);
+  const ci = rects.findIndex(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+  if (ci >= 0 && slots[ci]) {
+    slots[ci] = null;
+    draw();
+  }
+});
+
+cv.addEventListener('wheel', e => {
+  const p = toCanvas(e);
+  const rects = cellRects(layout);
+  const ci = rects.findIndex(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+  if (ci < 0 || !slots[ci] || !slots[ci].img) return;
+  e.preventDefault();
+  const s = slots[ci];
+  s.z = Math.max(1, Math.min(4, s.z * (e.deltaY < 0 ? 1.07 : 1 / 1.07)));
+  draw();
+}, { passive: false });
+
+// ===== 文字 =====
+const textCtrls = document.getElementById('textCtrls');
+const sizeRange = document.getElementById('sizeRange');
+
+function selectText(i) {
+  selectedText = i;
+  updateTextCtrls();
+}
+
+function updateTextCtrls() {
+  if (selectedText < 0 || !texts[selectedText]) {
+    textCtrls.classList.remove('show');
+    return;
+  }
+  const t = texts[selectedText];
+  textCtrls.classList.add('show');
+  sizeRange.value = t.size;
+  document.querySelectorAll('#colorSeg button').forEach(b => b.classList.toggle('on', b.dataset.c === t.color));
+  document.querySelectorAll('#fontSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === t.font));
+}
+
+document.getElementById('addTextBtn').onclick = () => {
+  const input = document.getElementById('textInput');
+  const v = input.value.trim();
+  if (!v) { alert('文字を入力してください'); return; }
+  texts.push({ text: v, x: W / 2, y: H * 0.18, size: 100, color: 'white', font: 'serif' });
+  input.value = '';
+  selectText(texts.length - 1);
+  draw();
+};
+
+sizeRange.oninput = () => {
+  if (selectedText < 0) return;
+  texts[selectedText].size = +sizeRange.value;
+  draw();
+};
+
+document.querySelectorAll('#colorSeg button').forEach(b => b.onclick = () => {
+  if (selectedText < 0) return;
+  texts[selectedText].color = b.dataset.c;
+  updateTextCtrls();
+  draw();
+});
+
+document.querySelectorAll('#fontSeg button').forEach(b => b.onclick = () => {
+  if (selectedText < 0) return;
+  texts[selectedText].font = b.dataset.f;
+  updateTextCtrls();
+  draw();
+});
+
+document.getElementById('delTextBtn').onclick = () => {
+  if (selectedText < 0) return;
+  texts.splice(selectedText, 1);
+  selectedText = -1;
+  updateTextCtrls();
+  draw();
+};
+
+// ===== 区切り線 =====
+const gapRange = document.getElementById('gapRange');
+gapRange.oninput = () => {
+  gap = +gapRange.value;
+  document.getElementById('gapVal').textContent = gap + 'px';
+  draw();
+};
+
+// ===== 保存 =====
+document.getElementById('saveBtn').onclick = () => {
+  if (!slots.some(s => s)) { alert('写真が入っていません'); return; }
+  draw(false);
+  cv.toBlob(blob => {
+    const a = document.createElement('a');
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    a.download = 'collage_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + '.jpg';
+    a.href = URL.createObjectURL(blob);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    draw();
+  }, 'image/jpeg', 0.92);
+};
+
+draw();
+</script>
+</body>
+</html>

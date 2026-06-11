@@ -199,6 +199,15 @@
       <textarea id="textInput" rows="2" maxlength="200" placeholder="例：JOSEPH HOMME&#10;リネン混（改行もOK）"></textarea>
       <button class="action" id="addTextBtn">追加</button>
     </div>
+    <div class="row">
+      <input type="text" id="numInput" placeholder="通し番号 例：1285" maxlength="10" style="flex:0 1 140px">
+      <div class="seg" id="numSeg">
+        <button data-pos="tl">左上</button>
+        <button data-pos="tr">右上</button>
+        <button data-pos="bl">左下</button>
+        <button data-pos="br">右下</button>
+      </div>
+    </div>
     <div id="textCtrls">
       <div class="row">
         <textarea id="editText" rows="2" maxlength="200"></textarea>
@@ -295,7 +304,7 @@ function clampSlot(s, r) {
 }
 
 function fontFor(t) {
-  return 'bold ' + t.size + 'px ' + (t.font === 'sans'
+  return (t.italic ? 'italic bold ' : 'bold ') + t.size + 'px ' + (t.font === 'sans'
     ? '"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif'
     : '"Times New Roman","Yu Mincho",serif');
 }
@@ -608,6 +617,25 @@ editText.oninput = () => {
   texts[selectedText].text = editText.value;
   draw();
 };
+
+// ===== 通し番号 =====
+const numInput = document.getElementById('numInput');
+document.querySelectorAll('#numSeg button').forEach(b => b.onclick = () => {
+  const v = numInput.value.trim();
+  if (!v) { alert('通し番号を入力してください'); return; }
+  let t = texts.find(x => x.isNum);
+  if (!t) {
+    t = { isNum: true, italic: true, text: v, x: 0, y: 0, size: 80, color: 'black', font: 'serif', outline: false, align: 'center' };
+    texts.push(t);
+  }
+  t.text = v;
+  const pos = b.dataset.pos;
+  t.align = (pos === 'tl' || pos === 'bl') ? 'left' : 'right';
+  t.x = (pos === 'tl' || pos === 'bl') ? 50 : W - 50;
+  t.y = (pos === 'tl' || pos === 'tr') ? 90 : H - 90;
+  selectText(texts.indexOf(t));
+  draw();
+});
 
 sizeRange.oninput = () => {
   if (selectedText < 0) return;
